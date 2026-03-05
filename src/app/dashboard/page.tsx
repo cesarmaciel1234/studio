@@ -43,7 +43,10 @@ import {
   Loader2,
   Send,
   Mic,
-  X
+  X,
+  LayoutDashboard,
+  PlusCircle,
+  Leaf
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useSidebar } from "@/components/ui/sidebar"
@@ -69,7 +72,9 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import * as PopoverPrimitive from "@radix-ui/react-popover"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import Image from "next/image"
+import Link from "next/link"
 
 import { 
   useFirebase, 
@@ -161,7 +166,7 @@ const LocationPickerMap = ({ onLocationSelect }: any) => (
   <div className="h-[400px] w-full bg-slate-100 flex items-center justify-center relative">
     <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">Mapa de Selección de Ubicación</p>
     <Button 
-      className="absolute bottom-6 h-12 rounded-full px-8 bg-slate-900 text-white font-bold"
+      className="absolute bottom-6 h-12 rounded-full px-8 bg-slate-900 text-white font-black"
       onClick={() => onLocationSelect(19.4326, -99.1332, "Centro Histórico, CDMX")}
     >
       Confirmar Ubicación
@@ -202,18 +207,13 @@ export default function DashboardPage() {
   const [heading, setHeading] = useState(0)
   const [isNavigating, setIsNavigating] = useState(false)
   
-  // Estados de IA (Capo/BizCopo)
+  // Estados de IA (Capo)
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false)
   const [capoMessage, setCapoMessage] = useState("")
   const [isCapoThinking, setIsCapoThinking] = useState(false)
   const [capoConversation, setCapoConversation] = useState<any[]>([])
   const [isCapoRecording, setIsCapoRecording] = useState(false)
   const [capoAudioUrl, setCapoAudioUrl] = useState<string | null>(null)
-  const [bizCopilotMessage, setBizCopilotMessage] = useState("")
-  const [isBizCopoThinking, setIsBizCopoThinking] = useState(false)
-  const [bizCopilotConversation, setBizCopilotConversation] = useState<any[]>([])
-  const [isBizCopoRecording, setIsBizCopoRecording] = useState(false)
-  const [bizCopilotAudioUrl, setBizCopilotAudioUrl] = useState<string | null>(null)
 
   // Estados de Negocio
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([])
@@ -234,17 +234,23 @@ export default function DashboardPage() {
   const [newPkgDescription, setNewPkgDescription] = useState("")
 
   const capoScrollRef = useRef<HTMLDivElement>(null)
-  const bizCopilotScrollRef = useRef<HTMLDivElement>(null)
   const chatScrollRef = useRef<HTMLDivElement>(null)
   const audioPlayerRef = useRef<HTMLAudioElement>(null)
-  const bizAudioPlayerRef = useRef<HTMLAudioElement>(null)
 
   useEffect(() => {
     setMounted(true)
     if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition((pos) => {
-        setCurrentCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude })
-      })
+      const watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          setCurrentCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+          if (pos.coords.heading !== null) {
+            setHeading(pos.coords.heading)
+          }
+        },
+        (err) => console.error(err),
+        { enableHighAccuracy: true }
+      )
+      return () => navigator.geolocation.clearWatch(watchId)
     }
   }, [])
 
@@ -309,22 +315,37 @@ export default function DashboardPage() {
     toast({ title: "Pedido Publicado", description: "El pedido ya es visible para los conductores." })
   }
 
+  /**
+   * Maneja la publicación de una nueva alerta comunitaria.
+   * Se activa desde el botón "PUBLICAR" en el diálogo de alerta.
+   */
   const handlePublishAlert = () => {
-    if (!selectedAlertType || !user?.uid || !firestore || !currentCoords) return
+    // 1. Validaciones: Asegura que haya un tipo de alerta seleccionado, un usuario y la instancia de Firestore.
+    if (!selectedAlertType || !user?.uid || !firestore) return
+    
+    // Si no se puede obtener la ubicación, notifica al usuario pero permite publicar sin coordenadas.
+    if (!currentCoords) {
+      toast({ title: "Error GPS", description: "No se detectó tu ubicación para el reporte.", variant: "destructive" })
+      return
+    }
+
+    // 2. Creación del Documento: Crea un nuevo documento en la colección 'alerts'.
     addDocumentNonBlocking(collection(firestore, "alerts"), {
-      type: selectedAlertType.id,
-      label: selectedAlertType.label,
-      description: alertDescription,
-      latitude: currentCoords.lat,
+      type: selectedAlertType.id, // ej. 'trafico', 'policia'
+      label: selectedAlertType.label, // ej. 'Tráfico', 'Control'
+      description: alertDescription, // El texto ingresado por el usuario.
+      latitude: currentCoords.lat, // Coordenadas actuales del conductor.
       longitude: currentCoords.lng,
-      authorId: user.uid,
-      status: "Active",
-      likes: [],
-      participantIds: [user.uid],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      authorId: user.uid, // ID del usuario que crea la alerta.
+      likes: [], // Array inicial de 'me gusta', vacío.
+      participantIds: [user.uid], // El creador es el primer participante.
+      createdAt: new Date().toISOString(), // Timestamp de creación.
+      updatedAt: new Date().toISOString(), // Timestamp de última actividad (importante para ordenar).
+      status: "Active"
     })
-    setAlertDescription(""); setSelectedAlertType(null);
+
+    // 3. Limpieza y Notificación: Cierra el diálogo, resetea los estados y notifica al usuario.
+    setIsAlertMenuOpen(false); setAlertDescription(""); setSelectedAlertType(null);
     toast({ title: "Reporte Vial Publicado" })
   }
 
@@ -353,16 +374,19 @@ export default function DashboardPage() {
   const handleClearAllAlerts = () => {
     if (!firestore || !alerts) return
     alerts.forEach(a => deleteDocumentNonBlocking(doc(firestore, "alerts", a.id)))
+    toast({ title: "Historial Limpio" })
   }
 
   const handleToggleRole = (newRole: "Driver" | "Admin") => {
     if (!user?.uid || !firestore) return
     updateDocumentNonBlocking(doc(firestore, "users", user.uid), { role: newRole })
+    toast({ title: `Cambio a Modo ${newRole === 'Admin' ? 'Empresa' : 'Driver'}` })
   }
 
   const handleAdminCenterMap = (lat: number, lng: number) => {
     setCurrentCoords({ lat, lng })
     setMapCenterTrigger(p => p + 1)
+    setIsExpanded(false)
   }
 
   const handleAdminOpenChat = (orderId: string) => {
@@ -390,8 +414,6 @@ export default function DashboardPage() {
 
   const handleSendTextToCapo = () => { /* Implementar integración con Genkit Flow */ }
   const handleCapoMicClick = () => { /* Implementar STT */ }
-  const handleSendToBizCopo = () => { /* Implementar integración con Genkit Flow */ }
-  const handleBizCopoMicClick = () => { /* Implementar STT */ }
 
   const toggleOrderSelection = (id: string) => {
     setSelectedOrderIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
@@ -414,8 +436,6 @@ export default function DashboardPage() {
   const activeSOSAlerts = useMemo(() => alerts?.filter(a => a.type === 'sos') || [], [alerts])
   const hasActiveSOS = activeSOSAlerts.length > 0
   const myActiveSOS = useMemo(() => alerts?.find(a => a.type === 'sos' && a.authorId === user?.uid), [alerts, user])
-
-  const chatTitle = "Canal de Chat" // Dinámico según el rol en producción
 
   if (!mounted) return null
   if (isUserLoading || (user && isUserDataLoading)) return <div className="h-screen w-full flex items-center justify-center bg-slate-900 text-white"><Loader2 className="animate-spin" /></div>
@@ -442,17 +462,91 @@ export default function DashboardPage() {
 
       {/* Botón Menu */}
       <div className="absolute top-8 left-8 z-10">
-        <Button 
-          variant="secondary" 
-          size="icon" 
-          onClick={toggleSidebar}
-          className="h-16 w-16 rounded-[1.5rem] shadow-2xl bg-white/95 backdrop-blur-md border-none hover:bg-white transition-all text-slate-700"
-        >
-          <div className="relative">
-            <Menu className="h-7 w-7" />
-            {hasActiveSOS && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-500 border-2 border-white animate-ping"></div>}
-          </div>
-        </Button>
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button 
+              variant="secondary" 
+              size="icon" 
+              className="h-16 w-16 rounded-[1.5rem] shadow-2xl bg-white/95 backdrop-blur-md border-none hover:bg-white transition-all text-slate-700"
+            >
+              <div className="relative">
+                <Menu className="h-7 w-7" />
+                {hasActiveSOS && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-500 border-2 border-white animate-ping"></div>}
+              </div>
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-[320px] p-0 border-none bg-white/80 backdrop-blur-xl shadow-2xl rounded-r-[48px]">
+            <div className="p-8 space-y-8 h-full flex flex-col">
+              <SheetHeader className="text-left">
+                <div className="flex items-center gap-4">
+                  <Avatar className="w-20 h-20 shadow-xl border-4 border-white">
+                    <AvatarImage src={user?.photoURL || ""} />
+                    <AvatarFallback className="bg-slate-100 font-black">{userData?.firstName?.substring(0,2) || "UR"}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <SheetTitle className="text-2xl font-black tracking-tighter flex items-center gap-2">
+                      {isAdmin ? (companyData?.name || "Biz Profile") : (userData?.firstName || "Driver")}
+                      <Pencil className="w-4 h-4 text-slate-300 hover:text-primary transition-colors cursor-pointer" />
+                    </SheetTitle>
+                    <p className="text-xs font-bold text-slate-400 truncate">{isAdmin ? (user.email) : `ID: ${user.uid.substring(0,8)}`}</p>
+                  </div>
+                </div>
+              </SheetHeader>
+              
+              <div className="bg-slate-200/50 p-1 rounded-[1.2rem] flex items-center mb-4">
+                <button
+                  onClick={() => handleToggleRole('Driver')}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-2 py-1.5 rounded-[1rem] transition-all font-black text-[8px] tracking-widest uppercase",
+                    !isAdmin ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+                  )}
+                >
+                  <Truck className="h-3 w-3" />
+                  DRIVER
+                </button>
+                <button
+                  onClick={() => handleToggleRole('Admin')}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-2 py-1.5 rounded-[1rem] transition-all font-black text-[8px] tracking-widest uppercase",
+                    isAdmin ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+                  )}
+                >
+                  <Building2 className="h-3 w-3" />
+                  BIZ
+                </button>
+              </div>
+
+              <div className="flex-1 space-y-4 pt-4">
+                <Link href="/wallet" className="flex items-center gap-4 group">
+                  <div className="h-11 w-11 rounded-[0.8rem] bg-emerald-50 flex items-center justify-center shadow-sm">
+                    <DollarSign className="h-5 w-5 text-emerald-500" />
+                  </div>
+                  <span className="text-md font-bold text-slate-700">Mi billetera</span>
+                </Link>
+                <Link href="/orders" className="flex items-center gap-4 group">
+                  <div className="h-11 w-11 rounded-[0.8rem] bg-blue-50 flex items-center justify-center shadow-sm">
+                    <Package className="h-5 w-5 text-blue-500" />
+                  </div>
+                  <span className="text-md font-bold text-slate-700">Pedidos: Pendientes y entregados</span>
+                </Link>
+                <Link href="/messages" className="flex items-center gap-4 group">
+                  <div className="h-11 w-11 rounded-[0.8rem] bg-purple-50 flex items-center justify-center shadow-sm">
+                    <MessageSquare className="h-5 w-5 text-purple-500" />
+                  </div>
+                  <span className="text-md font-bold text-slate-700">Mensajes comunidad</span>
+                </Link>
+                <Link href="/messages/history" className="flex items-center gap-4 group">
+                  <div className="h-11 w-11 rounded-[0.8rem] bg-orange-50 flex items-center justify-center shadow-sm">
+                    <MessageSquare className="h-5 w-5 text-orange-500" />
+                  </div>
+                  <span className="text-md font-bold text-slate-700">Mensajes con la comunidad</span>
+                </Link>
+              </div>
+
+              <Button variant="ghost" onClick={() => signOut(auth!)} className="w-full justify-start gap-4 h-16 rounded-3xl text-red-500 font-black px-5 hover:bg-red-50 transition-colors text-sm"><LogOut className="w-5 h-5" /> Salir del sistema</Button>
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
 
       {/* Techo: Botón IA */}
@@ -571,7 +665,7 @@ export default function DashboardPage() {
               </div>
               <div className="space-y-4">
                 {driverActiveOrders?.map((order, i) => (
-                  <DriverOrderCard key={order.id} order={order} index={i} onOpenChat={handleDriverOpenChat} />
+                  <DriverOrderCard key={order.id} order={order} index={i} currentCoords={currentCoords} onOpenChat={handleDriverOpenChat} />
                 ))}
               </div>
             </div>
@@ -609,9 +703,15 @@ export default function DashboardPage() {
           {activeTab === 'alerta' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-left">
               <div className="mb-10">
-                <h1 className="text-5xl font-black text-slate-900 tracking-tighter mb-1 uppercase">Capo Driver</h1>
+                <h1 className="text-5xl font-black text-slate-900 tracking-tighter mb-1 uppercase">Coro Driver</h1>
                 <p className="text-[10px] font-black tracking-[0.2em] text-slate-400 uppercase">Alertas Viales</p>
               </div>
+              
+              {/* 
+                BARRA DE HERRAMIENTAS DE ALERTAS:
+                Esta sección crea una barra horizontal de botones.
+                Cada botón representa un tipo de alerta que el conductor puede reportar.
+              */}
               <div className="flex gap-4 mb-12 overflow-x-auto pb-4 scrollbar-hide">
                 {[
                   { id: "policia", label: "CONTROL", icon: ShieldAlert, bg: "bg-blue-50", color: "text-blue-600" },
@@ -619,25 +719,61 @@ export default function DashboardPage() {
                   { id: "sos", label: "PELIGRO", icon: AlertTriangle, bg: "bg-red-50", color: "text-red-600" },
                   { id: "obras", label: "OBRAS", icon: HardHat, bg: "bg-emerald-50", color: "text-emerald-600" },
                 ].map((a) => (
-                  <Dialog key={a.id}>
+                  <Dialog key={a.id} open={isAlertMenuOpen && selectedAlertType?.id === a.id} onOpenChange={(open) => {
+                    if (!open) {
+                      setIsAlertMenuOpen(false);
+                      setSelectedAlertType(null);
+                    }
+                  }}>
+                    {/* 
+                      DIALOG TRIGGER (EL BOTÓN VISIBLE):
+                      Al hacer clic, abre la ventana emergente y guarda el tipo de alerta seleccionado.
+                    */}
                     <DialogTrigger asChild>
-                      <div className="flex flex-col items-center gap-4 min-w-[100px] cursor-pointer active:scale-95 transition-all">
+                      <div 
+                        className="flex flex-col items-center gap-4 min-w-[100px] cursor-pointer active:scale-95 transition-all"
+                        onClick={() => {
+                          setSelectedAlertType({id: a.id, label: a.label});
+                          setIsAlertMenuOpen(true);
+                        }}
+                      >
                         <div className={cn("h-24 w-24 rounded-full flex items-center justify-center shadow-sm border border-white", a.bg)}>
                           <a.icon className={cn("h-10 w-10", a.color)} />
                         </div>
                         <span className="text-[10px] font-black text-slate-900 tracking-wider uppercase">{a.label}</span>
                       </div>
                     </DialogTrigger>
+                    
+                    {/* 
+                      DIALOG CONTENT (LA VENTANA EMERGENTE):
+                      Contiene el área para ingresar la descripción de la alerta.
+                    */}
                     <DialogContent className="max-w-md w-[92vw] rounded-[48px] p-10">
-                      <DialogHeader><DialogTitle className="font-black uppercase text-xl text-center">Reportar {a.label}</DialogTitle></DialogHeader>
+                      <DialogHeader>
+                        <DialogTitle className="font-black uppercase text-xl text-center">Reportar {a.label}</DialogTitle>
+                      </DialogHeader>
                       <div className="py-6">
-                        <Textarea placeholder="Describe la situación..." className="min-h-[120px] bg-slate-50 border-none rounded-[28px] p-6 font-medium text-lg" value={alertDescription} onChange={(e) => setAlertDescription(e.target.value)} />
+                        <Textarea 
+                          placeholder="Describe la situación..." 
+                          className="min-h-[120px] bg-slate-50 border-none rounded-[28px] p-6 font-medium text-lg" 
+                          value={alertDescription} 
+                          onChange={(e) => setAlertDescription(e.target.value)} 
+                        />
                       </div>
-                      <Button onClick={() => { setSelectedAlertType({id: a.id, label: a.label}); handlePublishAlert(); }} className="w-full h-20 rounded-[32px] bg-slate-900 text-white font-black uppercase shadow-2xl">PUBLICAR</Button>
+                      <DialogFooter>
+                        {/* El botón PUBLICAR llama a la función handlePublishAlert */}
+                        <Button 
+                          onClick={handlePublishAlert} 
+                          className="w-full h-20 rounded-[32px] bg-slate-900 text-white font-black uppercase shadow-2xl"
+                        >
+                          PUBLICAR
+                        </Button>
+                      </DialogFooter>
                     </DialogContent>
                   </Dialog>
                 ))}
               </div>
+              
               <div className="space-y-4">
                 {alerts?.map((alert) => (
                   <CoroItem key={alert.id} alert={alert} userId={user.uid} />
@@ -694,3 +830,4 @@ export default function DashboardPage() {
     </div>
   )
 }
+
