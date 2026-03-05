@@ -1,115 +1,150 @@
+
 "use client"
 
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { 
-  LayoutDashboard, 
-  Map as MapIcon, 
-  Truck, 
+  Wallet, 
+  Package, 
   MessageSquare, 
-  Settings, 
-  Users, 
-  ShieldAlert,
-  ChevronRight,
-  LogOut
+  LogOut,
+  Truck,
+  Building2,
+  X,
+  Pencil
 } from "lucide-react"
 
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarSeparator,
+  useSidebar,
 } from "@/components/ui/sidebar"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 
 const navItems = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Mapas & Rastreo", href: "/maps", icon: MapIcon },
-  { name: "Flota & Conductores", href: "/fleet", icon: Truck },
-  { name: "Mensajería", href: "/messages", icon: MessageSquare },
-  { name: "Personal", href: "/staff", icon: Users },
+  { 
+    name: "Mi billetera", 
+    href: "/wallet", 
+    icon: Wallet, 
+    color: "text-emerald-500", 
+    bg: "bg-emerald-50" 
+  },
+  { 
+    name: "Mis pedidos", 
+    href: "/orders", 
+    icon: Package, 
+    color: "text-blue-500", 
+    bg: "bg-blue-50" 
+  },
+  { 
+    name: "Central de mensajes", 
+    href: "/messages", 
+    icon: MessageSquare, 
+    color: "text-purple-500", 
+    bg: "bg-purple-50" 
+  },
 ]
 
 export function AppSidebar() {
   const pathname = usePathname()
+  const { toggleSidebar } = useSidebar()
+  const [mode, setMode] = React.useState<"driver" | "biz">("driver")
 
   return (
-    <Sidebar collapsible="icon">
-      <SidebarHeader className="h-16 flex items-center px-4">
-        <div className="flex items-center gap-3">
-          <div className="bg-primary p-2 rounded-lg">
-            <Truck className="h-6 w-6 text-white" />
+    <Sidebar className="border-none bg-[#e2e8f0]/80 backdrop-blur-xl">
+      <SidebarHeader className="p-8 pb-0">
+        {/* Close Button */}
+        <div className="flex justify-end -mt-4 -mr-4">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={toggleSidebar}
+            className="rounded-full hover:bg-slate-200/50"
+          >
+            <X className="h-5 w-5 text-slate-500" />
+          </Button>
+        </div>
+
+        {/* Profile Section */}
+        <div className="flex items-center gap-6 mt-4 mb-10">
+          <div className="relative">
+            <Avatar className="h-24 w-24 border-4 border-white shadow-xl">
+              <AvatarFallback className="bg-white text-slate-900 text-3xl font-black">c</AvatarFallback>
+            </Avatar>
           </div>
-          <span className="font-headline font-bold text-xl tracking-tight group-data-[collapsible=icon]:hidden">
-            RutaRápida<span className="text-accent"> Pro</span>
-          </span>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <span className="text-3xl font-black text-slate-900">C</span>
+              <Pencil className="h-4 w-4 text-slate-300" />
+            </div>
+            <span className="text-slate-400 font-bold text-sm">ID: RleWLJDS</span>
+          </div>
+        </div>
+
+        {/* Mode Selector Toggle */}
+        <div className="bg-slate-200/50 p-1.5 rounded-[2rem] flex items-center mb-12">
+          <button
+            onClick={() => setMode("driver")}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 py-3 rounded-[1.8rem] transition-all font-black text-[10px] tracking-widest uppercase",
+              mode === "driver" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+            )}
+          >
+            <Truck className="h-4 w-4" />
+            DRIVER
+          </button>
+          <button
+            onClick={() => setMode("biz")}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 py-3 rounded-[1.8rem] transition-all font-black text-[10px] tracking-widest uppercase",
+              mode === "biz" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+            )}
+          >
+            <Building2 className="h-4 w-4" />
+            BIZ
+          </button>
         </div>
       </SidebarHeader>
-      <SidebarSeparator />
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">Navegación Principal</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navItems.map((item) => (
-                <SidebarMenuItem key={item.name}>
-                  <SidebarMenuButton 
-                    asChild 
-                    isActive={pathname === item.href}
-                    tooltip={item.name}
-                  >
-                    <Link href={item.href}>
-                      <item.icon />
-                      <span>{item.name}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">Seguridad</SidebarGroupLabel>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton tooltip="SOS Emergencia" className="text-destructive hover:text-destructive">
-                <ShieldAlert />
-                <span>SOS Emergencia</span>
+      <SidebarContent className="px-8 space-y-2">
+        <SidebarMenu className="gap-6">
+          {navItems.map((item) => (
+            <SidebarMenuItem key={item.name}>
+              <SidebarMenuButton 
+                asChild 
+                className="h-auto p-0 hover:bg-transparent"
+              >
+                <Link href={item.href} className="flex items-center gap-6 group">
+                  <div className={cn(
+                    "h-16 w-16 rounded-[1.2rem] flex items-center justify-center transition-transform group-active:scale-95 shadow-sm",
+                    item.bg
+                  )}>
+                    <item.icon className={cn("h-7 w-7", item.color)} />
+                  </div>
+                  <span className="text-xl font-bold text-slate-700">{item.name}</span>
+                </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroup>
+          ))}
+        </SidebarMenu>
       </SidebarContent>
 
-      <SidebarFooter>
-        <SidebarSeparator />
+      <SidebarFooter className="p-8 pt-0 mt-auto">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" className="hover:bg-sidebar-accent">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src="https://picsum.photos/seed/manager/40/40" />
-                <AvatarFallback>AM</AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col gap-0.5 text-left group-data-[collapsible=icon]:hidden">
-                <span className="font-semibold text-sm">Andrés Moreno</span>
-                <span className="text-xs text-muted-foreground">Fleet Manager</span>
-              </div>
-              <ChevronRight className="ml-auto h-4 w-4 group-data-[collapsible=icon]:hidden" />
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton tooltip="Cerrar Sesión">
-              <LogOut className="text-muted-foreground" />
-              <span>Cerrar Sesión</span>
+            <SidebarMenuButton 
+              className="flex items-center gap-4 text-red-500 hover:text-red-600 hover:bg-red-50/50 rounded-2xl h-14 p-4 font-black transition-colors"
+            >
+              <LogOut className="h-6 w-6" />
+              <span className="text-lg">Salir del sistema</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
