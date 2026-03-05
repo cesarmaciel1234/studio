@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -27,6 +26,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { useSidebar } from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"
+import { CapoAssistant } from "@/components/dashboard/CapoAssistant"
 
 // Importación dinámica del mapa para evitar errores de SSR con Leaflet
 const InteractiveMap = dynamic(() => import('@/components/dashboard/InteractiveMap'), {
@@ -52,6 +52,7 @@ export default function DashboardPage() {
   const { toggleSidebar } = useSidebar()
   const [panelState, setPanelState] = React.useState<"middle" | "top" | "bottom" | "hidden">("middle")
   const [activeTab, setActiveTab] = React.useState<"truck" | "orders" | "messages" | "alerts">("truck")
+  const [isCapoOpen, setIsCapoOpen] = React.useState(false)
 
   const togglePanel = () => {
     if (panelState === "middle") setPanelState("top")
@@ -96,11 +97,24 @@ export default function DashboardPage() {
       </div>
 
       {/* Floating Action Button (Top Right / "Techo") */}
-      <div className="absolute right-8 top-8 z-10">
-        <Button size="icon" className="h-16 w-16 rounded-[1.5rem] shadow-2xl bg-[#2563eb] text-white border-none hover:bg-[#1d4ed8]">
+      <div className="absolute right-8 top-8 z-10 flex flex-col gap-4">
+        <Button 
+          size="icon" 
+          onClick={() => setIsCapoOpen(true)}
+          className="h-16 w-16 rounded-[1.5rem] shadow-2xl bg-[#2563eb] text-white border-none hover:bg-[#1d4ed8]"
+        >
           <Sparkles className="h-8 w-8 fill-white" />
         </Button>
       </div>
+
+      {/* Capo Assistant Modal/Overlay */}
+      {isCapoOpen && (
+        <div className="absolute inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-8 animate-in fade-in duration-300">
+          <div className="w-full max-w-2xl h-[80vh]">
+            <CapoAssistant onClose={() => setIsCapoOpen(false)} />
+          </div>
+        </div>
+      )}
 
       {/* Map Controls Group (Bottom Right / "Piso") */}
       <div className="absolute right-8 bottom-32 flex flex-col gap-3 z-10">
@@ -276,7 +290,7 @@ export default function DashboardPage() {
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="mb-10">
                 <h1 className="text-5xl font-black text-slate-900 tracking-tighter mb-1">
-                  Copo Driver
+                  Capo Driver
                 </h1>
                 <p className="text-[10px] font-black tracking-[0.2em] text-slate-400 uppercase">
                   ALERTAS VIALES
