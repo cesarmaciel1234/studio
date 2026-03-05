@@ -11,95 +11,156 @@ import {
   Layers,
   MessageSquare,
   ShieldAlert,
-  Menu
+  Menu,
+  Clock,
+  AlertTriangle,
+  HardHat,
+  ChevronUp,
+  ChevronDown
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useSidebar } from "@/components/ui/sidebar"
+import { cn } from "@/lib/utils"
+
+const alerts = [
+  { id: 1, type: "OBRAS", time: "05/03/24 10:46", description: "REPORTE VIAL - Calle 50 x 12", icon: HardHat, color: "text-amber-500", bg: "bg-amber-50" },
+  { id: 2, type: "TRÁFICO", time: "05/03/24 10:30", description: "Congestión moderada en Av. Juárez", icon: Clock, color: "text-blue-500", bg: "bg-blue-50" },
+  { id: 3, type: "PELIGRO", time: "05/03/24 09:15", description: "Bache profundo reportado en lateral", icon: AlertTriangle, color: "text-red-500", bg: "bg-red-50" },
+]
 
 export default function DashboardPage() {
   const { toggleSidebar } = useSidebar()
+  const [panelState, setPanelState] = React.useState<"middle" | "top" | "bottom">("middle")
+
+  const togglePanel = () => {
+    if (panelState === "middle") setPanelState("top")
+    else if (panelState === "top") setPanelState("bottom")
+    else setPanelState("middle")
+  }
+
+  const panelHeightClass = {
+    top: "top-20",
+    middle: "top-1/2",
+    bottom: "top-[85%]"
+  }
 
   return (
-    <div className="fixed inset-0 w-full h-full overflow-hidden bg-muted/20">
-      {/* Background Map - Light Theme Placeholder */}
+    <div className="fixed inset-0 w-full h-full overflow-hidden bg-slate-100">
+      {/* Background Map */}
       <div 
         className="absolute inset-0 bg-cover bg-center"
         style={{ 
-          backgroundImage: "url('https://picsum.photos/seed/light-map-logistics/1600/1200')",
-          filter: "grayscale(20%) contrast(90%) brightness(105%)"
+          backgroundImage: "url('https://picsum.photos/seed/map-logistics-v2/1600/1200')",
+          filter: "grayscale(10%) contrast(95%) brightness(105%)"
         }}
       />
       
       {/* Top Left Menu Button */}
-      <div className="absolute top-8 left-8">
+      <div className="absolute top-8 left-8 z-10">
         <Button 
           variant="secondary" 
           size="icon" 
           onClick={toggleSidebar}
-          className="h-14 w-14 rounded-full shadow-xl bg-white/90 backdrop-blur-md border-none hover:bg-white transition-all text-slate-700"
+          className="h-16 w-16 rounded-[1.5rem] shadow-2xl bg-white/95 backdrop-blur-md border-none hover:bg-white transition-all text-slate-700"
         >
-          <Menu className="h-6 w-6" />
+          <Menu className="h-7 w-7" />
         </Button>
       </div>
 
-      {/* Floating Action Buttons (Right) */}
-      <div className="absolute right-8 top-1/2 -translate-y-1/2 flex flex-col gap-5">
-        <Button size="icon" variant="secondary" className="h-16 w-16 rounded-full shadow-xl bg-white/90 backdrop-blur-md border-none hover:bg-white transition-all">
-          <Navigation className="h-7 w-7 text-slate-600" />
+      {/* Floating Buttons (Right) */}
+      <div className="absolute right-8 top-1/4 flex flex-col gap-4 z-10">
+        <Button size="icon" variant="secondary" className="h-14 w-14 rounded-2xl shadow-xl bg-white/90 backdrop-blur-md border-none">
+          <Navigation className="h-6 w-6 text-slate-600" />
         </Button>
-        <Button size="icon" variant="secondary" className="h-16 w-16 rounded-full shadow-xl bg-white/90 backdrop-blur-md border-none hover:bg-white transition-all">
-          <Target className="h-7 w-7 text-slate-600" />
-        </Button>
-        <Button size="icon" variant="secondary" className="h-16 w-16 rounded-full shadow-xl bg-white/90 backdrop-blur-md border-none hover:bg-white transition-all">
-          <Maximize className="h-7 w-7 text-slate-600" />
-        </Button>
-        <Button size="icon" className="h-16 w-16 rounded-full shadow-2xl bg-primary hover:bg-primary/90 transition-all text-white">
-          <Sparkles className="h-7 w-7" />
+        <Button size="icon" variant="secondary" className="h-14 w-14 rounded-2xl shadow-xl bg-white/90 backdrop-blur-md border-none">
+          <Maximize className="h-6 w-6 text-slate-600" />
         </Button>
       </div>
 
-      {/* Custom Map Markers */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-        <div className="relative">
-          {/* Active Marker 1 */}
-          <div className="absolute -top-16 -left-10 drop-shadow-2xl">
-            <div className="flex flex-col items-center">
-              <div className="bg-slate-900 text-white p-3 rounded-[1.5rem] rounded-bl-none shadow-2xl border-4 border-white rotate-45 flex items-center justify-center w-12 h-12">
-                <Truck className="h-6 w-6 -rotate-45" />
-              </div>
+      {/* Sliding Bottom Sheet */}
+      <div 
+        className={cn(
+          "absolute inset-x-0 bottom-0 bg-white shadow-[0_-20px_50px_-12px_rgba(0,0,0,0.15)] rounded-t-[3.5rem] transition-all duration-500 ease-in-out z-20 overflow-hidden flex flex-col",
+          panelHeightClass[panelState]
+        )}
+      >
+        {/* Drag Handle Area */}
+        <div 
+          className="h-12 w-full flex items-center justify-center cursor-pointer active:bg-slate-50 transition-colors"
+          onClick={togglePanel}
+        >
+          <div className="w-16 h-1.5 bg-slate-200 rounded-full" />
+        </div>
+
+        {/* Content Container */}
+        <div className="flex-1 overflow-y-auto px-8 pb-12 scrollbar-hide">
+          {/* Internal Navigation Pill */}
+          <div className="flex justify-center mb-10">
+            <div className="bg-slate-50 p-2 rounded-[2.5rem] flex items-center gap-2 shadow-inner border border-slate-100">
+              <Button variant="ghost" size="icon" className="h-16 w-20 rounded-[1.8rem] text-slate-400">
+                <Truck className="h-7 w-7" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-16 w-20 rounded-[1.8rem] text-slate-400">
+                <Layers className="h-7 w-7" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-16 w-20 rounded-[1.8rem] text-slate-400">
+                <MessageSquare className="h-7 w-7" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-16 w-24 rounded-[1.8rem] bg-slate-900 text-white shadow-lg">
+                <ShieldAlert className="h-7 w-7" />
+              </Button>
             </div>
           </div>
-          
-          {/* Active Marker 2 */}
-          <div className="absolute top-4 left-6 drop-shadow-2xl">
-            <div className="flex flex-col items-center">
-              <div className="bg-white text-slate-900 p-3 rounded-[1.5rem] rounded-bl-none shadow-2xl border-4 border-slate-900 rotate-45 flex items-center justify-center w-12 h-12">
-                <Truck className="h-6 w-6 -rotate-45" />
+
+          {/* Header */}
+          <div className="mb-10">
+            <h1 className="text-5xl font-black text-slate-900 tracking-tighter mb-1">
+              Copo Driver
+            </h1>
+            <p className="text-xs font-black tracking-[0.2em] text-slate-400 uppercase">
+              ALERTAS VIALES
+            </p>
+          </div>
+
+          {/* Quick Action Categories */}
+          <div className="flex gap-4 mb-12 overflow-x-auto pb-4 scrollbar-hide">
+            {[
+              { label: "CONTROL", icon: ShieldAlert, bg: "bg-blue-50", color: "text-blue-600" },
+              { label: "TRÁFICO", icon: Clock, bg: "bg-orange-50", color: "text-orange-600" },
+              { label: "PELIGRO", icon: AlertTriangle, bg: "bg-red-50", color: "text-red-600" },
+              { label: "OBRAS", icon: HardHat, bg: "bg-emerald-50", color: "text-emerald-600" },
+            ].map((cat) => (
+              <div key={cat.label} className="flex flex-col items-center gap-4 min-w-[100px]">
+                <div className={cn("h-24 w-24 rounded-full flex items-center justify-center shadow-sm border border-white", cat.bg)}>
+                  <cat.icon className={cn("h-10 w-10", cat.color)} />
+                </div>
+                <span className="text-[10px] font-black text-slate-900 tracking-wider">{cat.label}</span>
               </div>
-            </div>
+            ))}
+          </div>
+
+          {/* Alerts List */}
+          <div className="space-y-4">
+            {alerts.map((alert) => (
+              <div key={alert.id} className="flex items-center gap-5 p-5 bg-slate-50/50 rounded-[2rem] border border-slate-100 hover:bg-slate-50 transition-colors">
+                <div className={cn("h-14 w-14 rounded-2xl flex items-center justify-center shrink-0 shadow-sm", alert.bg)}>
+                  <alert.icon className={cn("h-6 w-6", alert.color)} />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-black text-sm text-slate-900">{alert.type}</h4>
+                  <p className="text-[10px] font-bold text-slate-400 mb-1">{alert.time} • REPORTE VIAL</p>
+                  <p className="text-xs text-slate-600 line-clamp-1">{alert.description}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Bottom Navigation Pill Container */}
-      <div className="absolute bottom-0 left-0 right-0 p-8 flex flex-col items-center pointer-events-none">
-        {/* Drawer Handle Visual */}
-        <div className="w-20 h-1.5 bg-slate-300/50 rounded-full mb-8 shadow-sm backdrop-blur-sm" />
-        
-        {/* Navigation Pill */}
-        <div className="bg-white/90 backdrop-blur-2xl px-4 py-3 rounded-[2.5rem] shadow-2xl border border-white/50 flex items-center gap-2 pointer-events-auto">
-          <Button variant="ghost" size="icon" className="h-16 w-24 rounded-[1.8rem] bg-slate-900 text-white hover:bg-slate-800 hover:text-white transition-all">
-            <Truck className="h-7 w-7" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-16 w-20 rounded-[1.8rem] text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all">
-            <Layers className="h-7 w-7" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-16 w-20 rounded-[1.8rem] text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all">
-            <MessageSquare className="h-7 w-7" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-16 w-20 rounded-[1.8rem] text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all">
-            <ShieldAlert className="h-7 w-7" />
-          </Button>
+      {/* Map Markers Overlay */}
+      <div className="absolute top-1/3 left-1/4 pointer-events-none">
+        <div className="h-10 w-10 bg-slate-900 rounded-[1rem] rounded-bl-none rotate-45 flex items-center justify-center shadow-xl border-4 border-white">
+          <Truck className="h-5 w-5 text-white -rotate-45" />
         </div>
       </div>
     </div>
