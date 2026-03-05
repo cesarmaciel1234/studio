@@ -86,6 +86,9 @@ export default function DashboardPage() {
 
       {/* Floating Buttons (Right Group) */}
       <div className="absolute right-8 top-1/4 flex flex-col gap-3 z-10">
+        <Button size="icon" className="h-14 w-14 rounded-full shadow-xl bg-[#2563eb] text-white border-none hover:bg-[#1d4ed8] mb-2">
+          <Sparkles className="h-6 w-6 fill-white" />
+        </Button>
         <Button size="icon" variant="secondary" className="h-14 w-14 rounded-full shadow-xl bg-white/95 backdrop-blur-md border-none hover:bg-white">
           <Navigation className="h-6 w-6 text-slate-600" />
         </Button>
@@ -103,12 +106,9 @@ export default function DashboardPage() {
         >
           <Maximize className="h-6 w-6" />
         </Button>
-        <Button size="icon" className="h-14 w-14 rounded-full shadow-xl bg-[#2563eb] text-white border-none hover:bg-[#1d4ed8] mt-4">
-          <Sparkles className="h-6 w-6 fill-white" />
-        </Button>
       </div>
 
-      {/* Zoom Controls (Bottom Right) - Adjusted Size and Column Layout */}
+      {/* Zoom Controls (Bottom Right) */}
       <div className="absolute right-8 bottom-12 flex flex-col gap-0 z-10 shadow-lg rounded-xl overflow-hidden bg-white/95 backdrop-blur-md border border-slate-200">
         <Button variant="ghost" size="icon" className="h-10 w-10 rounded-none hover:bg-slate-100 border-b border-slate-100 p-0">
           <Plus className="h-4 w-4 text-slate-600" />
