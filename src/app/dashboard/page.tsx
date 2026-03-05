@@ -123,16 +123,6 @@ export default function DashboardPage() {
         </Button>
       </div>
 
-      {/* Zoom Controls (Bottom Right / "Piso" extreme) */}
-      <div className="absolute right-8 bottom-12 flex flex-col gap-0 z-10 shadow-lg rounded-xl overflow-hidden bg-white/95 backdrop-blur-md border border-slate-200">
-        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none hover:bg-slate-100 border-b border-slate-100 p-0">
-          <Plus className="h-3 w-3 text-slate-600" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none hover:bg-slate-100 p-0">
-          <Minus className="h-3 w-3 text-slate-600" />
-        </Button>
-      </div>
-
       {/* Sliding Bottom Sheet */}
       <div 
         className={cn(
