@@ -3,19 +3,65 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { Truck, User } from "lucide-react"
+import { Truck, User as UserIcon, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { useFirebase } from "@/firebase"
+import { signInAnonymously } from "firebase/auth"
+import { doc, setDoc, serverTimestamp } from "firebase/firestore"
+import { useToast } from "@/hooks/use-toast"
 
 export default function LoginPage() {
   const router = useRouter()
+  const { auth, firestore } = useFirebase()
+  const { toast } = useToast()
   const [name, setName] = React.useState("")
+  const [isLoading, setIsLoading] = React.useState(false)
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (name.trim()) {
-      // Simulación de inicio de sesión
+    if (!name.trim() || !auth || !firestore) return
+
+    setIsLoading(true)
+    try {
+      // 1. Inicio de sesión anónimo
+      const userCredential = await signInAnonymously(auth)
+      const user = userCredential.user
+
+      // 2. Crear perfil de usuario básico en Firestore
+      await setDoc(doc(firestore, "users", user.uid), {
+        id: user.uid,
+        firstName: name.trim(),
+        lastName: "",
+        email: "",
+        role: "Driver",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      })
+
+      // 3. Crear perfil de conductor por defecto
+      await setDoc(doc(firestore, "driverProfiles", user.uid), {
+        id: user.uid,
+        userId: user.uid,
+        currentLocationLat: 19.4326, // CDMX default
+        currentLocationLng: -99.1332,
+        lastLocationUpdate: serverTimestamp()
+      })
+
+      toast({
+        title: "¡Bienvenido, " + name + "!",
+        description: "Iniciando sesión en RutaRápida Pro."
+      })
+
       router.push("/dashboard")
+    } catch (error: any) {
+      console.error(error)
+      toast({
+        title: "Error al iniciar sesión",
+        description: "No pudimos conectar con el servidor. Inténtalo de nuevo.",
+        variant: "destructive"
+      })
+      setIsLoading(false)
     }
   }
 
@@ -45,7 +91,7 @@ export default function LoginPage() {
         <form onSubmit={handleLogin} className="w-full space-y-6">
           <div className="relative group">
             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#3b82f6] transition-colors">
-              <User className="h-5 w-5" />
+              <UserIcon className="h-5 w-5" />
             </div>
             <Input
               type="text"
@@ -54,31 +100,25 @@ export default function LoginPage() {
               onChange={(e) => setName(e.target.value)}
               className="w-full h-16 pl-12 bg-[#1e293b]/50 border-2 border-slate-700 rounded-2xl text-white placeholder:text-slate-500 focus:border-[#3b82f6] focus:ring-0 transition-all text-lg"
               required
+              disabled={isLoading}
             />
           </div>
 
           <Button 
             type="submit"
+            disabled={isLoading || !name.trim()}
             className="w-full h-16 bg-white hover:bg-slate-100 text-[#0f172a] font-black text-lg rounded-2xl shadow-xl transition-transform active:scale-[0.98]"
           >
-            ACCESO REPARTIDOR
+            {isLoading ? (
+              <Loader2 className="h-6 w-6 animate-spin" />
+            ) : (
+              "ENTRAR AHORA"
+            )}
           </Button>
 
-          <div className="relative flex items-center justify-center py-4">
-            <div className="absolute w-full h-[1px] bg-slate-800"></div>
-            <div className="relative h-2 w-2 rounded-full border border-slate-700 bg-[#0f172a] flex items-center justify-center">
-              <span className="text-[8px] font-bold text-slate-500">o</span>
-            </div>
-          </div>
-
-          <Button 
-            variant="outline"
-            type="button"
-            className="w-full h-16 bg-transparent border-2 border-slate-700 hover:bg-slate-800 text-slate-300 font-bold text-lg rounded-2xl transition-all"
-            onClick={() => router.push("/dashboard")}
-          >
-            ACCESO CORPORATIVO
-          </Button>
+          <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest text-center">
+            Acceso instantáneo sin contraseña
+          </p>
         </form>
       </div>
     </div>
