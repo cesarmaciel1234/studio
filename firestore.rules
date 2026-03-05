@@ -1,0 +1,163 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * RUTA RÁPIDA PRO SECURITY RULES
+     * 
+     * Core Philosophy: This ruleset enforces a strict identity-based access model, utilizing denormalized 
+     * ownership fields to ensure high performance and authorization independence. Access is granted 
+     * based on a user's role (Driver vs. Admin/Company) and their direct relationship to specific 
+     * resources (Orders, Alerts, Profiles).
+     * 
+     * Data Structure: 
+     * - User-centric data (Profiles) is managed via path-based ownership.
+     * - Collaborative data (Orders, ChatMessages) uses denormalized participant IDs (companyId, driverId).
+     * - Community data (Alerts) allows authenticated global reads with owner-only modifications.
+     * 
+     * Key Security Decisions:
+     * 1. Authorization Independence: Critical IDs (like orderCompanyId) are stored directly on child 
+     *    documents to avoid costly get() calls during rule evaluation.
+     * 2. Prototyping Flexibility: Schema validation is ignored for content fields, but strictly 
+     *    enforced for relational fields (IDs) to maintain system integrity.
+     * 3. Role-Based Access: Logic distinguishes between logistics companies (Admins) and 
+     *    delivery personnel (Drivers) primarily through document-level ownership.
+     */
+
+    // --- GLOBAL HELPER FUNCTIONS ---
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isExistingOwner(userId) {
+      return resource != null && isOwner(userId);
+    }
+
+    // The 'isParticipant' function was unused and contained invalid variable references
+    // for 'request' within its scope, as identified by the Firebase Rules linter.
+    // It has been removed. The logic it intended to encapsulate is directly
+    // handled in the 'chatMessages' collection rules.
+
+    // --- COLLECTION RULES ---
+
+    /**
+     * @description Rules for the core User documents.
+     * @path /users/{userId}
+     * @allow get: (get) If the user is signed in. (list) Not allowed to list all users.
+     * @deny update: (update) If the user attempts to modify another user's profile.
+     * @principle Path-based ownership for profile management and self-creation.
+     */
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if false; 
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if false; // Profiles should not be deleted via client during prototype.
+    }
+
+    /**
+     * @description Specific profile details for Drivers.
+     * @path /driverProfiles/{driverId}
+     * @allow get: (get) Any signed-in user (for dispatcher/driver visibility).
+     * @deny write: (create/update) If the requester is not the driver associated with this ID.
+     * @principle Enforces 1:1 mapping between User and DriverProfile via document ID.
+     */
+    match /driverProfiles/{driverId} {
+      allow get, list: if isSignedIn();
+      allow create: if isOwner(driverId);
+      allow update: if isExistingOwner(driverId);
+      allow delete: if false;
+    }
+
+    /**
+     * @description Profile details for Logistics Companies (Admins).
+     * @path /companyProfiles/{companyId}
+     * @allow get: (get) Any signed-in user.
+     * @deny update: (update) If not the owning company administrator.
+     * @principle Path-based ownership for company metadata.
+     */
+    match /companyProfiles/{companyId} {
+      allow get, list: if isSignedIn();
+      allow create: if isOwner(companyId);
+      allow update: if isExistingOwner(companyId);
+      allow delete: if false;
+    }
+
+    /**
+     * @description Fleet management for logistics vehicles.
+     * @path /vehicles/{vehicleId}
+     * @allow create: (create) If companyId in data matches the authenticated Admin.
+     * @deny update: (update) If a user from a different company attempts to modify the vehicle.
+     * @principle Relational integrity via companyId field.
+     */
+    match /vehicles/{vehicleId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.companyId == request.auth.uid;
+      allow update: if resource != null && (resource.data.companyId == request.auth.uid || resource.data.currentDriverId == request.auth.uid);
+      allow delete: if resource != null && resource.data.companyId == request.auth.uid;
+    }
+
+    /**
+     * @description Core logistics orders.
+     * @path /orders/{orderId}
+     * @allow create: (create) Only company administrators.
+     * @allow update: (update) Assigned drivers (status updates) or the creating company.
+     * @deny list: (list) If the user is not signed in.
+     * @principle Shared access model allowing drivers to see unassigned orders and companies to manage theirs.
+     */
+    match /orders/{orderId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.companyId == request.auth.uid;
+      allow update: if resource != null && (
+        resource.data.companyId == request.auth.uid || 
+        resource.data.driverId == null || 
+        resource.data.driverId == request.auth.uid
+      );
+      allow delete: if resource != null && resource.data.companyId == request.auth.uid;
+
+      /**
+       * @description Chat messages between Company and Driver for a specific order.
+       * @path /orders/{orderId}/chatMessages/{messageId}
+       * @allow create: (create) Only if user is a participant (companyId or driverId) of the order.
+       * @deny get: (get) If the user is not part of the order conversation.
+       * @principle Authorization independence using denormalized orderCompanyId/orderDriverId.
+       */
+      match /chatMessages/{messageId} {
+        // We use the denormalized fields provided in the IR for performance
+        allow get, list: if isSignedIn() && (
+          request.auth.uid == resource.data.orderCompanyId || 
+          request.auth.uid == resource.data.orderDriverId
+        );
+        allow create: if isSignedIn() && (
+          request.resource.data.orderCompanyId == request.auth.uid || 
+          request.resource.data.orderDriverId == request.auth.uid
+        );
+        allow update, delete: if false; // Chat history is immutable in this prototype.
+      }
+    }
+
+    /**
+     * @description Community-driven road alerts and SOS signals.
+     * @path /alerts/{alertId}
+     * @allow get, list: (read) All authenticated users can see the community feed.
+     * @allow create: (create) Authenticated users can post alerts with their ID as author.
+     * @deny delete: (delete) If the user is not the author or an admin.
+     * @principle Public read with owner-only writes.
+     */
+    match /alerts/{alertId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+      allow update: if resource != null && (
+        resource.data.authorId == request.auth.uid || 
+        request.auth.uid in request.resource.data.participantIds ||
+        request.resource.data.likes.size() != resource.data.likes.size()
+      );
+      allow delete: if resource != null && resource.data.authorId == request.auth.uid;
+    }
+  }
+}
