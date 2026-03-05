@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -109,13 +108,13 @@ export default function DashboardPage() {
         </Button>
       </div>
 
-      {/* Zoom Controls (Bottom Right) */}
-      <div className="absolute right-8 bottom-12 flex flex-col gap-0 z-10 shadow-xl rounded-xl overflow-hidden">
-        <Button variant="secondary" size="icon" className="h-12 w-12 bg-white/95 border-b rounded-none hover:bg-white">
-          <Plus className="h-5 w-5 text-slate-600" />
+      {/* Zoom Controls (Bottom Right) - Adjusted Size and Column Layout */}
+      <div className="absolute right-8 bottom-12 flex flex-col gap-0 z-10 shadow-lg rounded-xl overflow-hidden bg-white/95 backdrop-blur-md border border-slate-200">
+        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-none hover:bg-slate-100 border-b border-slate-100 p-0">
+          <Plus className="h-4 w-4 text-slate-600" />
         </Button>
-        <Button variant="secondary" size="icon" className="h-12 w-12 bg-white/95 rounded-none hover:bg-white">
-          <Minus className="h-5 w-5 text-slate-600" />
+        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-none hover:bg-slate-100 p-0">
+          <Minus className="h-4 w-4 text-slate-600" />
         </Button>
       </div>
 
