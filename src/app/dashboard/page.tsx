@@ -14,11 +14,15 @@ import {
   AlertTriangle,
   HardHat,
   Package,
-  ChevronRight
+  ChevronRight,
+  Flame,
+  MapPin,
+  List
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useSidebar } from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"
+import { Progress } from "@/components/ui/progress"
 
 const alerts = [
   { id: 1, type: "OBRAS", time: "05/03/24 10:46", description: "REPORTE VIAL - Calle 50 x 12", icon: HardHat, color: "text-amber-500", bg: "bg-amber-50" },
@@ -35,7 +39,7 @@ const pendingOrders = [
 export default function DashboardPage() {
   const { toggleSidebar } = useSidebar()
   const [panelState, setPanelState] = React.useState<"middle" | "top" | "bottom">("middle")
-  const [activeTab, setActiveTab] = React.useState<"truck" | "orders" | "messages" | "alerts">("orders")
+  const [activeTab, setActiveTab] = React.useState<"truck" | "orders" | "messages" | "alerts">("truck")
 
   const togglePanel = () => {
     if (panelState === "middle") setPanelState("top")
@@ -149,7 +153,59 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {activeTab === "orders" ? (
+          {activeTab === "truck" ? (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 bg-slate-950 rounded-[3rem] p-10 text-white min-h-[500px] shadow-2xl">
+              <div className="flex items-center justify-between mb-12">
+                <h1 className="text-5xl font-black tracking-tighter uppercase">
+                  Mi Ruta Pro
+                </h1>
+                <Flame className="h-10 w-10 text-orange-500 fill-orange-500" />
+              </div>
+
+              {/* Misión Diaria */}
+              <div className="bg-slate-900/50 rounded-[2.5rem] p-8 mb-8 border border-slate-800 shadow-inner">
+                <div className="flex justify-between items-center mb-6">
+                  <span className="text-[10px] font-black tracking-[0.2em] text-slate-400 uppercase">
+                    MISIÓN DIARIA: BONO $2,000
+                  </span>
+                  <span className="text-[10px] font-black text-blue-400 uppercase">
+                    5/10 PEDIDOS
+                  </span>
+                </div>
+                <div className="h-3 w-full bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-full w-1/2 bg-blue-600 rounded-full" />
+                </div>
+              </div>
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 gap-6">
+                <div className="bg-slate-900/50 rounded-[2.5rem] p-8 border border-slate-800 flex flex-col items-center text-center group hover:bg-slate-900 transition-colors cursor-pointer">
+                  <span className="text-[10px] font-black tracking-[0.2em] text-slate-400 uppercase mb-4">
+                    POSICIÓN
+                  </span>
+                  <div className="h-16 w-16 rounded-full bg-slate-800 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <MapPin className="h-8 w-8 text-white" />
+                  </div>
+                  <span className="text-4xl font-black">#2</span>
+                </div>
+                <div className="bg-slate-900/50 rounded-[2.5rem] p-8 border border-slate-800 flex flex-col items-center text-center group hover:bg-slate-900 transition-colors cursor-pointer">
+                  <span className="text-[10px] font-black tracking-[0.2em] text-slate-400 uppercase mb-4">
+                    PARADAS
+                  </span>
+                  <div className="h-16 w-16 rounded-full bg-slate-800 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <List className="h-8 w-8 text-white" />
+                  </div>
+                  <span className="text-4xl font-black">8</span>
+                </div>
+              </div>
+
+              <div className="mt-12 text-center">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  Actualizado hace 2 min
+                </p>
+              </div>
+            </div>
+          ) : activeTab === "orders" ? (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
               {/* Header Orders */}
               <div className="flex items-center gap-6 mb-10">
