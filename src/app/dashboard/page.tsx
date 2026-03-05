@@ -17,7 +17,11 @@ import {
   ChevronRight,
   Flame,
   MapPin,
-  List
+  List,
+  Target,
+  Sparkles,
+  Plus,
+  Minus
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useSidebar } from "@/components/ui/sidebar"
@@ -38,7 +42,7 @@ const pendingOrders = [
 
 export default function DashboardPage() {
   const { toggleSidebar } = useSidebar()
-  const [panelState, setPanelState] = React.useState<"middle" | "top" | "bottom">("middle")
+  const [panelState, setPanelState] = React.useState<"middle" | "top" | "bottom" | "hidden">("middle")
   const [activeTab, setActiveTab] = React.useState<"truck" | "orders" | "messages" | "alerts">("truck")
 
   const togglePanel = () => {
@@ -47,10 +51,15 @@ export default function DashboardPage() {
     else setPanelState("middle")
   }
 
+  const toggleFullScreen = () => {
+    setPanelState(panelState === "hidden" ? "middle" : "hidden")
+  }
+
   const panelHeightClass = {
     top: "top-20",
     middle: "top-1/2",
-    bottom: "top-[85%]"
+    bottom: "top-[85%]",
+    hidden: "top-full"
   }
 
   return (
@@ -59,8 +68,8 @@ export default function DashboardPage() {
       <div 
         className="absolute inset-0 bg-cover bg-center"
         style={{ 
-          backgroundImage: "url('https://picsum.photos/seed/map-logistics-v2/1600/1200')",
-          filter: "grayscale(10%) contrast(95%) brightness(105%)"
+          backgroundImage: "url('https://picsum.photos/seed/map-logistics-full/1600/1200')",
+          filter: "grayscale(5%) contrast(90%) brightness(105%)"
         }}
       />
       
@@ -76,14 +85,57 @@ export default function DashboardPage() {
         </Button>
       </div>
 
-      {/* Floating Buttons (Right) */}
-      <div className="absolute right-8 top-1/4 flex flex-col gap-4 z-10">
-        <Button size="icon" variant="secondary" className="h-14 w-14 rounded-2xl shadow-xl bg-white/90 backdrop-blur-md border-none">
+      {/* Floating Buttons (Right Group) */}
+      <div className="absolute right-8 top-1/4 flex flex-col gap-3 z-10">
+        <Button size="icon" variant="secondary" className="h-14 w-14 rounded-full shadow-xl bg-white/95 backdrop-blur-md border-none hover:bg-white">
           <Navigation className="h-6 w-6 text-slate-600" />
         </Button>
-        <Button size="icon" variant="secondary" className="h-14 w-14 rounded-2xl shadow-xl bg-white/90 backdrop-blur-md border-none">
-          <Maximize className="h-6 w-6 text-slate-600" />
+        <Button size="icon" variant="secondary" className="h-14 w-14 rounded-full shadow-xl bg-white/95 backdrop-blur-md border-none hover:bg-white">
+          <Target className="h-6 w-6 text-slate-600" />
         </Button>
+        <Button 
+          size="icon" 
+          variant="secondary" 
+          onClick={toggleFullScreen}
+          className={cn(
+            "h-14 w-14 rounded-full shadow-xl backdrop-blur-md border-none transition-all",
+            panelState === "hidden" ? "bg-slate-900 text-white" : "bg-white/95 text-slate-600"
+          )}
+        >
+          <Maximize className="h-6 w-6" />
+        </Button>
+        <Button size="icon" className="h-14 w-14 rounded-full shadow-xl bg-[#2563eb] text-white border-none hover:bg-[#1d4ed8] mt-4">
+          <Sparkles className="h-6 w-6 fill-white" />
+        </Button>
+      </div>
+
+      {/* Zoom Controls (Bottom Right) */}
+      <div className="absolute right-8 bottom-12 flex flex-col gap-0 z-10 shadow-xl rounded-xl overflow-hidden">
+        <Button variant="secondary" size="icon" className="h-12 w-12 bg-white/95 border-b rounded-none hover:bg-white">
+          <Plus className="h-5 w-5 text-slate-600" />
+        </Button>
+        <Button variant="secondary" size="icon" className="h-12 w-12 bg-white/95 rounded-none hover:bg-white">
+          <Minus className="h-5 w-5 text-slate-600" />
+        </Button>
+      </div>
+
+      {/* Map Markers (Black Pins with Trucks) */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none flex flex-col items-center">
+        <div className="relative">
+          <div className="h-12 w-12 bg-[#0f172a] rounded-full border-4 border-white shadow-2xl flex items-center justify-center">
+            <Truck className="h-6 w-6 text-white" />
+          </div>
+          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[10px] border-t-white" />
+        </div>
+      </div>
+
+      <div className="absolute top-[45%] left-[55%] pointer-events-none flex flex-col items-center scale-90 opacity-80">
+        <div className="relative">
+          <div className="h-12 w-12 bg-[#0f172a] rounded-full border-4 border-white shadow-2xl flex items-center justify-center">
+            <Truck className="h-6 w-6 text-white" />
+          </div>
+          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[10px] border-t-white" />
+        </div>
       </div>
 
       {/* Sliding Bottom Sheet */}
@@ -162,7 +214,6 @@ export default function DashboardPage() {
                 <Flame className="h-10 w-10 text-orange-500 fill-orange-500" />
               </div>
 
-              {/* Misión Diaria */}
               <div className="bg-slate-900/50 rounded-[2.5rem] p-8 mb-8 border border-slate-800 shadow-inner">
                 <div className="flex justify-between items-center mb-6">
                   <span className="text-[10px] font-black tracking-[0.2em] text-slate-400 uppercase">
@@ -177,7 +228,6 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Stats Grid */}
               <div className="grid grid-cols-2 gap-6">
                 <div className="bg-slate-900/50 rounded-[2.5rem] p-8 border border-slate-800 flex flex-col items-center text-center group hover:bg-slate-900 transition-colors cursor-pointer">
                   <span className="text-[10px] font-black tracking-[0.2em] text-slate-400 uppercase mb-4">
@@ -207,7 +257,6 @@ export default function DashboardPage() {
             </div>
           ) : activeTab === "orders" ? (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-              {/* Header Orders */}
               <div className="flex items-center gap-6 mb-10">
                 <div className="h-16 w-16 rounded-full bg-slate-900 flex items-center justify-center text-white shadow-xl ring-8 ring-slate-50">
                   <Package className="h-8 w-8" />
@@ -222,7 +271,6 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Orders List */}
               <div className="space-y-4">
                 {pendingOrders.map((order) => (
                   <div key={order.id} className="group relative flex items-center gap-5 p-6 bg-slate-50/50 rounded-[2.5rem] border border-slate-100 hover:bg-slate-900 hover:text-white transition-all duration-300 cursor-pointer shadow-sm hover:shadow-xl">
@@ -247,7 +295,6 @@ export default function DashboardPage() {
             </div>
           ) : activeTab === "alerts" ? (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-              {/* Header Alerts */}
               <div className="mb-10">
                 <h1 className="text-5xl font-black text-slate-900 tracking-tighter mb-1">
                   Copo Driver
@@ -257,7 +304,6 @@ export default function DashboardPage() {
                 </p>
               </div>
 
-              {/* Quick Action Categories */}
               <div className="flex gap-4 mb-12 overflow-x-auto pb-4 scrollbar-hide">
                 {[
                   { label: "CONTROL", icon: ShieldAlert, bg: "bg-blue-50", color: "text-blue-600" },
@@ -274,7 +320,6 @@ export default function DashboardPage() {
                 ))}
               </div>
 
-              {/* Alerts List */}
               <div className="space-y-4">
                 {alerts.map((alert) => (
                   <div key={alert.id} className="flex items-center gap-5 p-5 bg-slate-50/50 rounded-[2rem] border border-slate-100 hover:bg-slate-50 transition-colors">
@@ -296,13 +341,6 @@ export default function DashboardPage() {
               <p className="font-bold uppercase tracking-widest text-xs">Sección en desarrollo</p>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* Map Markers Overlay */}
-      <div className="absolute top-1/3 left-1/4 pointer-events-none">
-        <div className="h-10 w-10 bg-slate-900 rounded-[1rem] rounded-bl-none rotate-45 flex items-center justify-center shadow-xl border-4 border-white">
-          <Truck className="h-5 w-5 text-white -rotate-45" />
         </div>
       </div>
     </div>
