@@ -5,9 +5,9 @@ import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { 
-  Wallet, 
-  Package, 
-  MessageSquare, 
+  CreditCard, 
+  ShoppingBag, 
+  Users, 
   LogOut,
   Truck,
   Building2,
@@ -33,21 +33,21 @@ const navItems = [
   { 
     name: "Mi billetera", 
     href: "/wallet", 
-    icon: Wallet, 
+    icon: CreditCard, 
     color: "text-emerald-500", 
     bg: "bg-emerald-50" 
   },
   { 
     name: "Mis pedidos", 
     href: "/orders", 
-    icon: Package, 
+    icon: ShoppingBag, 
     color: "text-blue-500", 
     bg: "bg-blue-50" 
   },
   { 
-    name: "Central de mensajes", 
+    name: "Mensajes comunidad", 
     href: "/messages", 
-    icon: MessageSquare, 
+    icon: Users, 
     color: "text-purple-500", 
     bg: "bg-purple-50" 
   },
@@ -76,46 +76,46 @@ export function AppSidebar() {
         {/* Profile Section */}
         <div className="flex items-center gap-4 mt-2 mb-6">
           <div className="relative">
-            <Avatar className="h-16 w-16 border-2 border-white shadow-lg">
+            <Avatar className="h-14 w-14 border-2 border-white shadow-lg">
               <AvatarFallback className="bg-white text-slate-900 text-xl font-black">c</AvatarFallback>
             </Avatar>
           </div>
           <div className="flex flex-col gap-0.5">
             <div className="flex items-center gap-2">
-              <span className="text-2xl font-black text-slate-900">C</span>
+              <span className="text-xl font-black text-slate-900">C</span>
               <Pencil className="h-3 w-3 text-slate-300" />
             </div>
-            <span className="text-slate-400 font-bold text-xs">ID: RleWLJDS</span>
+            <span className="text-slate-400 font-bold text-[10px]">ID: RleWLJDS</span>
           </div>
         </div>
 
         {/* Mode Selector Toggle */}
-        <div className="bg-slate-200/50 p-1 rounded-[1.5rem] flex items-center mb-6">
+        <div className="bg-slate-200/50 p-1 rounded-[1.2rem] flex items-center mb-4">
           <button
             onClick={() => setMode("driver")}
             className={cn(
-              "flex-1 flex items-center justify-center gap-2 py-2 rounded-[1.2rem] transition-all font-black text-[9px] tracking-widest uppercase",
+              "flex-1 flex items-center justify-center gap-2 py-1.5 rounded-[1rem] transition-all font-black text-[8px] tracking-widest uppercase",
               mode === "driver" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
             )}
           >
-            <Truck className="h-3.5 w-3.5" />
+            <Truck className="h-3 w-3" />
             DRIVER
           </button>
           <button
             onClick={() => setMode("biz")}
             className={cn(
-              "flex-1 flex items-center justify-center gap-2 py-2 rounded-[1.2rem] transition-all font-black text-[9px] tracking-widest uppercase",
+              "flex-1 flex items-center justify-center gap-2 py-1.5 rounded-[1rem] transition-all font-black text-[8px] tracking-widest uppercase",
               mode === "biz" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
             )}
           >
-            <Building2 className="h-3.5 w-3.5" />
+            <Building2 className="h-3 w-3" />
             BIZ
           </button>
         </div>
       </SidebarHeader>
 
       <SidebarContent className="px-6 space-y-2">
-        <SidebarMenu className="gap-4">
+        <SidebarMenu className="gap-3">
           {navItems.map((item) => (
             <SidebarMenuItem key={item.name}>
               <SidebarMenuButton 
@@ -124,12 +124,12 @@ export function AppSidebar() {
               >
                 <Link href={item.href} className="flex items-center gap-4 group">
                   <div className={cn(
-                    "h-12 w-12 rounded-[1rem] flex items-center justify-center transition-transform group-active:scale-95 shadow-sm",
+                    "h-11 w-11 rounded-[0.8rem] flex items-center justify-center transition-transform group-active:scale-95 shadow-sm",
                     item.bg
                   )}>
                     <item.icon className={cn("h-5 w-5", item.color)} />
                   </div>
-                  <span className="text-lg font-bold text-slate-700">{item.name}</span>
+                  <span className="text-md font-bold text-slate-700">{item.name}</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -141,10 +141,10 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton 
-              className="flex items-center gap-3 text-red-500 hover:text-red-600 hover:bg-red-50/50 rounded-xl h-12 p-3 font-black transition-colors"
+              className="flex items-center gap-3 text-red-500 hover:text-red-600 hover:bg-red-50/50 rounded-xl h-11 p-3 font-black transition-colors"
             >
-              <LogOut className="h-5 w-5" />
-              <span className="text-md">Salir del sistema</span>
+              <LogOut className="h-4 w-4" />
+              <span className="text-sm">Salir del sistema</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
