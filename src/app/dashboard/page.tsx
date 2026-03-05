@@ -254,30 +254,62 @@ export default function DashboardPage() {
     }
   }, [])
 
-  // Firebase Data Queries
-  const userRef = useMemoFirebase(() => user ? doc(firestore!, "users", user.uid) : null, [user, firestore])
+  // Firebase Data Queries - All wrapped with user check to avoid Permission Denied
+  const userRef = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return doc(firestore, "users", user.uid);
+  }, [user, firestore])
+  
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userRef)
   const isAdmin = userData?.role === 'Admin'
 
-  const companyRef = useMemoFirebase(() => isAdmin ? doc(firestore!, "companyProfiles", user!.uid) : null, [isAdmin, user, firestore])
+  const companyRef = useMemoFirebase(() => {
+    if (!firestore || !user || !isAdmin) return null;
+    return doc(firestore, "companyProfiles", user.uid);
+  }, [isAdmin, user, firestore])
+  
   const { data: companyData } = useDoc(companyRef)
 
-  const alertsQuery = useMemoFirebase(() => query(collection(firestore!, "alerts"), orderBy("createdAt", "desc")), [firestore])
+  const alertsQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return query(collection(firestore, "alerts"), orderBy("createdAt", "desc"));
+  }, [firestore, user])
+  
   const { data: alerts } = useCollection(alertsQuery)
 
-  const pendingOrdersQuery = useMemoFirebase(() => query(collection(firestore!, "orders"), where("status", "==", "Pending"), orderBy("createdAt", "desc")), [firestore])
+  const pendingOrdersQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return query(collection(firestore, "orders"), where("status", "==", "Pending"), orderBy("createdAt", "desc"));
+  }, [firestore, user])
+  
   const { data: pendingOrders } = useCollection(pendingOrdersQuery)
 
-  const driverActiveOrdersQuery = useMemoFirebase(() => user ? query(collection(firestore!, "orders"), where("driverId", "==", user.uid), where("status", "in", ["Assigned", "Picked Up", "In Transit"])) : null, [user, firestore])
+  const driverActiveOrdersQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return query(collection(firestore, "orders"), where("driverId", "==", user.uid), where("status", "in", ["Assigned", "Picked Up", "In Transit"]));
+  }, [user, firestore])
+  
   const { data: driverActiveOrders } = useCollection(driverActiveOrdersQuery)
 
-  const bizOrdersQuery = useMemoFirebase(() => isAdmin ? query(collection(firestore!, "orders"), where("companyId", "==", user!.uid)) : null, [isAdmin, user, firestore])
+  const bizOrdersQuery = useMemoFirebase(() => {
+    if (!firestore || !user || !isAdmin) return null;
+    return query(collection(firestore, "orders"), where("companyId", "==", user.uid));
+  }, [isAdmin, user, firestore])
+  
   const { data: bizAllOrders, isLoading: isLoadingBizOrders } = useCollection(bizOrdersQuery)
 
-  const fleetQuery = useMemoFirebase(() => isAdmin ? query(collection(firestore!, "users"), where("role", "==", "Driver")) : null, [isAdmin, firestore])
+  const fleetQuery = useMemoFirebase(() => {
+    if (!firestore || !user || !isAdmin) return null;
+    return query(collection(firestore, "users"), where("role", "==", "Driver"));
+  }, [isAdmin, user, firestore])
+  
   const { data: fleetData } = useCollection(fleetQuery)
 
-  const chatMessagesQuery = useMemoFirebase(() => selectedChatOrderId ? query(collection(firestore!, `orders/${selectedChatOrderId}/chatMessages`), orderBy("timestamp", "asc")) : null, [selectedChatOrderId, firestore])
+  const chatMessagesQuery = useMemoFirebase(() => {
+    if (!firestore || !user || !selectedChatOrderId) return null;
+    return query(collection(firestore, `orders/${selectedChatOrderId}/chatMessages`), orderBy("timestamp", "asc"));
+  }, [selectedChatOrderId, user, firestore])
+  
   const { data: chatMessages } = useCollection(chatMessagesQuery)
 
   const activeOrder = useMemo(() => driverActiveOrders?.[0], [driverActiveOrders])
@@ -315,36 +347,28 @@ export default function DashboardPage() {
     toast({ title: "Pedido Publicado", description: "El pedido ya es visible para los conductores." })
   }
 
-  /**
-   * Maneja la publicación de una nueva alerta comunitaria.
-   * Se activa desde el botón "PUBLICAR" en el diálogo de alerta.
-   */
   const handlePublishAlert = () => {
-    // 1. Validaciones: Asegura que haya un tipo de alerta seleccionado, un usuario y la instancia de Firestore.
     if (!selectedAlertType || !user?.uid || !firestore) return
     
-    // Si no se puede obtener la ubicación, notifica al usuario pero permite publicar sin coordenadas.
     if (!currentCoords) {
       toast({ title: "Error GPS", description: "No se detectó tu ubicación para el reporte.", variant: "destructive" })
       return
     }
 
-    // 2. Creación del Documento: Crea un nuevo documento en la colección 'alerts'.
     addDocumentNonBlocking(collection(firestore, "alerts"), {
-      type: selectedAlertType.id, // ej. 'trafico', 'policia'
-      label: selectedAlertType.label, // ej. 'Tráfico', 'Control'
-      description: alertDescription, // El texto ingresado por el usuario.
-      latitude: currentCoords.lat, // Coordenadas actuales del conductor.
+      type: selectedAlertType.id,
+      label: selectedAlertType.label,
+      description: alertDescription,
+      latitude: currentCoords.lat,
       longitude: currentCoords.lng,
-      authorId: user.uid, // ID del usuario que crea la alerta.
-      likes: [], // Array inicial de 'me gusta', vacío.
-      participantIds: [user.uid], // El creador es el primer participante.
-      createdAt: new Date().toISOString(), // Timestamp de creación.
-      updatedAt: new Date().toISOString(), // Timestamp de última actividad (importante para ordenar).
+      authorId: user.uid,
+      likes: [],
+      participantIds: [user.uid],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       status: "Active"
     })
 
-    // 3. Limpieza y Notificación: Cierra el diálogo, resetea los estados y notifica al usuario.
     setIsAlertMenuOpen(false); setAlertDescription(""); setSelectedAlertType(null);
     toast({ title: "Reporte Vial Publicado" })
   }
@@ -412,9 +436,6 @@ export default function DashboardPage() {
     setChatMessageText("")
   }
 
-  const handleSendTextToCapo = () => { /* Implementar integración con Genkit Flow */ }
-  const handleCapoMicClick = () => { /* Implementar STT */ }
-
   const toggleOrderSelection = (id: string) => {
     setSelectedOrderIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
   }
@@ -435,7 +456,6 @@ export default function DashboardPage() {
 
   const activeSOSAlerts = useMemo(() => alerts?.filter(a => a.type === 'sos') || [], [alerts])
   const hasActiveSOS = activeSOSAlerts.length > 0
-  const myActiveSOS = useMemo(() => alerts?.find(a => a.type === 'sos' && a.authorId === user?.uid), [alerts, user])
 
   if (!mounted) return null
   if (isUserLoading || (user && isUserDataLoading)) return <div className="h-screen w-full flex items-center justify-center bg-slate-900 text-white"><Loader2 className="animate-spin" /></div>
@@ -445,7 +465,6 @@ export default function DashboardPage() {
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-slate-50">
-      {/* Mapa de fondo */}
       <div className="absolute inset-0 z-0">
         <InteractiveMap 
           center={currentCoords ? [currentCoords.lat, currentCoords.lng] : [19.4326, -99.1332]} 
@@ -460,7 +479,6 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Botón Menu */}
       <div className="absolute top-8 left-8 z-10">
         <Sheet>
           <SheetTrigger asChild>
@@ -531,7 +549,7 @@ export default function DashboardPage() {
                 </Link>
                 <Link href="/messages" className="flex items-center gap-4 group">
                   <div className="h-11 w-11 rounded-[0.8rem] bg-purple-50 flex items-center justify-center shadow-sm">
-                    <MessageSquare className="h-5 w-5 text-purple-500" />
+                    <Users className="h-5 w-5 text-purple-500" />
                   </div>
                   <span className="text-md font-bold text-slate-700">Mensajes comunidad</span>
                 </Link>
@@ -549,7 +567,6 @@ export default function DashboardPage() {
         </Sheet>
       </div>
 
-      {/* Techo: Botón IA */}
       <div className="absolute right-8 top-8 z-10 flex flex-col gap-4">
         <Button 
           size="icon" 
@@ -560,7 +577,6 @@ export default function DashboardPage() {
         </Button>
       </div>
 
-      {/* Piso: Controles Mapa */}
       <div className="absolute right-8 bottom-32 flex flex-col gap-3 z-10">
         <Button size="icon" variant="secondary" onClick={() => setIsNavigating(!isNavigating)} className={cn("h-12 w-12 rounded-full shadow-xl backdrop-blur-md border-none transition-all", isNavigating ? "bg-blue-600 text-white" : "bg-white/95 text-slate-600")}>
           <Navigation className="h-5 w-5" />
@@ -581,7 +597,6 @@ export default function DashboardPage() {
         </Button>
       </div>
 
-      {/* Modal Capo AI */}
       {isAiAssistantOpen && (
         <div className="absolute inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-8 animate-in fade-in duration-300">
           <div className="w-full max-w-2xl h-[80vh]">
@@ -614,7 +629,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Bandeja Deslizable */}
       <div 
         className={cn(
           "absolute inset-x-0 bottom-0 bg-white shadow-[0_-20px_50px_-12px_rgba(0,0,0,0.15)] rounded-t-[3.5rem] transition-all duration-500 ease-in-out z-20 overflow-hidden flex flex-col",
@@ -706,12 +720,6 @@ export default function DashboardPage() {
                 <h1 className="text-5xl font-black text-slate-900 tracking-tighter mb-1 uppercase">Coro Driver</h1>
                 <p className="text-[10px] font-black tracking-[0.2em] text-slate-400 uppercase">Alertas Viales</p>
               </div>
-              
-              {/* 
-                BARRA DE HERRAMIENTAS DE ALERTAS:
-                Esta sección crea una barra horizontal de botones.
-                Cada botón representa un tipo de alerta que el conductor puede reportar.
-              */}
               <div className="flex gap-4 mb-12 overflow-x-auto pb-4 scrollbar-hide">
                 {[
                   { id: "policia", label: "CONTROL", icon: ShieldAlert, bg: "bg-blue-50", color: "text-blue-600" },
@@ -725,10 +733,6 @@ export default function DashboardPage() {
                       setSelectedAlertType(null);
                     }
                   }}>
-                    {/* 
-                      DIALOG TRIGGER (EL BOTÓN VISIBLE):
-                      Al hacer clic, abre la ventana emergente y guarda el tipo de alerta seleccionado.
-                    */}
                     <DialogTrigger asChild>
                       <div 
                         className="flex flex-col items-center gap-4 min-w-[100px] cursor-pointer active:scale-95 transition-all"
@@ -743,11 +747,6 @@ export default function DashboardPage() {
                         <span className="text-[10px] font-black text-slate-900 tracking-wider uppercase">{a.label}</span>
                       </div>
                     </DialogTrigger>
-                    
-                    {/* 
-                      DIALOG CONTENT (LA VENTANA EMERGENTE):
-                      Contiene el área para ingresar la descripción de la alerta.
-                    */}
                     <DialogContent className="max-w-md w-[92vw] rounded-[48px] p-10">
                       <DialogHeader>
                         <DialogTitle className="font-black uppercase text-xl text-center">Reportar {a.label}</DialogTitle>
@@ -761,7 +760,6 @@ export default function DashboardPage() {
                         />
                       </div>
                       <DialogFooter>
-                        {/* El botón PUBLICAR llama a la función handlePublishAlert */}
                         <Button 
                           onClick={handlePublishAlert} 
                           className="w-full h-20 rounded-[32px] bg-slate-900 text-white font-black uppercase shadow-2xl"
@@ -773,7 +771,6 @@ export default function DashboardPage() {
                   </Dialog>
                 ))}
               </div>
-              
               <div className="space-y-4">
                 {alerts?.map((alert) => (
                   <CoroItem key={alert.id} alert={alert} userId={user.uid} />
@@ -830,4 +827,3 @@ export default function DashboardPage() {
     </div>
   )
 }
-
