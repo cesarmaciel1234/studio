@@ -17,6 +17,12 @@ export default function LoginPage() {
   const { toast } = useToast()
   const [name, setName] = React.useState("")
   const [isLoading, setIsLoading] = React.useState(false)
+  const [mounted, setMounted] = React.useState(false)
+
+  // Prevenir errores de hidratación asegurando que el renderizado coincida entre servidor y cliente
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -63,6 +69,11 @@ export default function LoginPage() {
       })
       setIsLoading(false)
     }
+  }
+
+  // Mientras no esté montado, retornamos un contenedor vacío para evitar el mismatch de hidratación
+  if (!mounted) {
+    return <div className="min-h-screen bg-[#0f172a]" />
   }
 
   return (
