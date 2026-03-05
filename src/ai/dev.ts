@@ -1,1 +1,6 @@
-// Flows will be imported for their side effects in this file.
+import { config } from 'dotenv';
+config();
+
+import '@/ai/flows/proactive-logistical-insights.ts';
+import '@/ai/flows/generate-optimized-route-from-description.ts';
+import '@/ai/flows/summarize-driver-activity.ts';
