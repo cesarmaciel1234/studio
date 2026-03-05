@@ -38,7 +38,7 @@ const navItems = [
     bg: "bg-emerald-50" 
   },
   { 
-    name: "Mis pedidos", 
+    name: "Pedidos: Pendientes y entregados", 
     href: "/orders", 
     icon: ShoppingBag, 
     color: "text-blue-500", 
@@ -136,7 +136,7 @@ export function AppSidebar() {
                   )}>
                     <item.icon className={cn("h-5 w-5", item.color)} />
                   </div>
-                  <span className="text-md font-bold text-slate-700">{item.name}</span>
+                  <span className="text-md font-bold text-slate-700 leading-tight">{item.name}</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
