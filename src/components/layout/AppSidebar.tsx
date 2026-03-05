@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -12,7 +11,8 @@ import {
   Truck,
   Building2,
   X,
-  Pencil
+  Pencil,
+  MessageSquare
 } from "lucide-react"
 
 import {
@@ -50,6 +50,13 @@ const navItems = [
     icon: Users, 
     color: "text-purple-500", 
     bg: "bg-purple-50" 
+  },
+  { 
+    name: "Historial mensaje central", 
+    href: "/messages/history", 
+    icon: MessageSquare, 
+    color: "text-orange-500", 
+    bg: "bg-orange-50" 
   },
 ]
 

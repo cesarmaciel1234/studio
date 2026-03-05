@@ -84,51 +84,46 @@ export default function DashboardPage() {
         </Button>
       </div>
 
-      {/* Floating Buttons (Right Group) */}
-      <div className="absolute right-8 top-1/4 flex flex-col gap-3 z-10">
-        <Button size="icon" className="h-14 w-14 rounded-full shadow-xl bg-[#2563eb] text-white border-none hover:bg-[#1d4ed8] mb-2">
-          <Sparkles className="h-6 w-6 fill-white" />
+      {/* Floating Action Button (Top Right / "Techo") */}
+      <div className="absolute right-8 top-8 z-10">
+        <Button size="icon" className="h-16 w-16 rounded-[1.5rem] shadow-2xl bg-[#2563eb] text-white border-none hover:bg-[#1d4ed8]">
+          <Sparkles className="h-8 w-8 fill-white" />
         </Button>
-        <Button size="icon" variant="secondary" className="h-14 w-14 rounded-full shadow-xl bg-white/95 backdrop-blur-md border-none hover:bg-white">
-          <Navigation className="h-6 w-6 text-slate-600" />
+      </div>
+
+      {/* Map Controls Group (Bottom Right / "Piso") */}
+      <div className="absolute right-8 bottom-32 flex flex-col gap-3 z-10">
+        <Button size="icon" variant="secondary" className="h-12 w-12 rounded-full shadow-xl bg-white/95 backdrop-blur-md border-none hover:bg-white">
+          <Navigation className="h-5 w-5 text-slate-600" />
         </Button>
-        <Button size="icon" variant="secondary" className="h-14 w-14 rounded-full shadow-xl bg-white/95 backdrop-blur-md border-none hover:bg-white">
-          <Target className="h-6 w-6 text-slate-600" />
+        <Button size="icon" variant="secondary" className="h-12 w-12 rounded-full shadow-xl bg-white/95 backdrop-blur-md border-none hover:bg-white">
+          <Target className="h-5 w-5 text-slate-600" />
         </Button>
         <Button 
           size="icon" 
           variant="secondary" 
           onClick={toggleFullScreen}
           className={cn(
-            "h-14 w-14 rounded-full shadow-xl backdrop-blur-md border-none transition-all",
+            "h-12 w-12 rounded-full shadow-xl backdrop-blur-md border-none transition-all",
             panelState === "hidden" ? "bg-slate-900 text-white" : "bg-white/95 text-slate-600"
           )}
         >
-          <Maximize className="h-6 w-6" />
+          <Maximize className="h-5 w-5" />
         </Button>
       </div>
 
-      {/* Zoom Controls (Bottom Right) */}
+      {/* Zoom Controls (Bottom Right / "Piso" extreme) */}
       <div className="absolute right-8 bottom-12 flex flex-col gap-0 z-10 shadow-lg rounded-xl overflow-hidden bg-white/95 backdrop-blur-md border border-slate-200">
-        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-none hover:bg-slate-100 border-b border-slate-100 p-0">
-          <Plus className="h-4 w-4 text-slate-600" />
+        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none hover:bg-slate-100 border-b border-slate-100 p-0">
+          <Plus className="h-3 w-3 text-slate-600" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-none hover:bg-slate-100 p-0">
-          <Minus className="h-4 w-4 text-slate-600" />
+        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none hover:bg-slate-100 p-0">
+          <Minus className="h-3 w-3 text-slate-600" />
         </Button>
       </div>
 
-      {/* Map Markers (Black Pins with Trucks) */}
+      {/* Map Markers */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none flex flex-col items-center">
-        <div className="relative">
-          <div className="h-12 w-12 bg-[#0f172a] rounded-full border-4 border-white shadow-2xl flex items-center justify-center">
-            <Truck className="h-6 w-6 text-white" />
-          </div>
-          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[10px] border-t-white" />
-        </div>
-      </div>
-
-      <div className="absolute top-[45%] left-[55%] pointer-events-none flex flex-col items-center scale-90 opacity-80">
         <div className="relative">
           <div className="h-12 w-12 bg-[#0f172a] rounded-full border-4 border-white shadow-2xl flex items-center justify-center">
             <Truck className="h-6 w-6 text-white" />
@@ -246,12 +241,6 @@ export default function DashboardPage() {
                   </div>
                   <span className="text-4xl font-black">8</span>
                 </div>
-              </div>
-
-              <div className="mt-12 text-center">
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                  Actualizado hace 2 min
-                </p>
               </div>
             </div>
           ) : activeTab === "orders" ? (
