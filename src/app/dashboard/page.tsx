@@ -1,6 +1,8 @@
+
 "use client"
 
 import * as React from "react"
+import dynamic from "next/dynamic"
 import { 
   Navigation, 
   Maximize, 
@@ -25,7 +27,14 @@ import {
 import { Button } from "@/components/ui/button"
 import { useSidebar } from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"
-import { Progress } from "@/components/ui/progress"
+
+// Importación dinámica del mapa para evitar errores de SSR con Leaflet
+const InteractiveMap = dynamic(() => import('@/components/dashboard/InteractiveMap'), {
+  ssr: false,
+  loading: () => <div className="h-full w-full bg-slate-200 animate-pulse flex items-center justify-center">
+    <p className="text-slate-400 font-black uppercase tracking-widest text-[10px]">Cargando Monitor de Flota...</p>
+  </div>
+});
 
 const alerts = [
   { id: 1, type: "OBRAS", time: "05/03/24 10:46", description: "REPORTE VIAL - Calle 50 x 12", icon: HardHat, color: "text-amber-500", bg: "bg-amber-50" },
@@ -61,16 +70,18 @@ export default function DashboardPage() {
     hidden: "top-full"
   }
 
+  // Coordenadas por defecto (Ciudad de México)
+  const defaultCenter: [number, number] = [19.4326, -99.1332];
+
   return (
     <div className="fixed inset-0 w-full h-full overflow-hidden bg-slate-100">
-      {/* Background Map */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ 
-          backgroundImage: "url('https://picsum.photos/seed/map-logistics-full/1600/1200')",
-          filter: "grayscale(5%) contrast(90%) brightness(105%)"
-        }}
-      />
+      {/* Mapa Interactivo de Fondo */}
+      <div className="absolute inset-0 z-0">
+        <InteractiveMap 
+          center={defaultCenter} 
+          zoom={13}
+        />
+      </div>
       
       {/* Top Left Menu Button */}
       <div className="absolute top-8 left-8 z-10">
@@ -120,16 +131,6 @@ export default function DashboardPage() {
         <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none hover:bg-slate-100 p-0">
           <Minus className="h-3 w-3 text-slate-600" />
         </Button>
-      </div>
-
-      {/* Map Markers */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none flex flex-col items-center">
-        <div className="relative">
-          <div className="h-12 w-12 bg-[#0f172a] rounded-full border-4 border-white shadow-2xl flex items-center justify-center">
-            <Truck className="h-6 w-6 text-white" />
-          </div>
-          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[10px] border-t-white" />
-        </div>
       </div>
 
       {/* Sliding Bottom Sheet */}
