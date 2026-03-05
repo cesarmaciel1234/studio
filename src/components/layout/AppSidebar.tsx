@@ -52,7 +52,7 @@ const navItems = [
     bg: "bg-purple-50" 
   },
   { 
-    name: "Historial mensaje central", 
+    name: "Mensajes con la comunidad", 
     href: "/messages/history", 
     icon: MessageSquare, 
     color: "text-orange-500", 
