@@ -57,7 +57,6 @@ export default function DashboardPage() {
 
   useEffect(() => { setMounted(true) }, [])
 
-  // Fuente de verdad única para el rol y la visualización de la app
   const userDocRef = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null
     return doc(firestore, "users", user.uid)
@@ -67,7 +66,6 @@ export default function DashboardPage() {
   const isAdmin = userData?.role === 'Admin'
   const isDriver = userData?.role === 'Driver'
 
-  // Seguimiento GPS optimizado para repartidores - Solo se activa si el rol es 'Driver'
   useEffect(() => {
     if (typeof window !== "undefined" && navigator.geolocation && isDriver && user?.uid && firestore) {
       const watchId = navigator.geolocation.watchPosition(
@@ -76,7 +74,6 @@ export default function DashboardPage() {
           setCurrentCoords(coords)
           
           const dRef = doc(firestore, "driverProfiles", user.uid)
-          // Usamos setDocumentNonBlocking con merge para asegurar que el documento exista sin fallar
           setDocumentNonBlocking(dRef, {
             currentLatitude: coords.lat,
             currentLongitude: coords.lng,
@@ -86,13 +83,12 @@ export default function DashboardPage() {
         (error) => {
           console.warn("GPS Tracking Warning:", error.message);
         },
-        { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+        { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 }
       )
       return () => navigator.geolocation.clearWatch(watchId)
     }
   }, [isDriver, user?.uid, firestore])
 
-  // Queries unificadas
   const fleetQuery = useMemoFirebase(() => {
     if (!firestore || !isAdmin) return null
     return query(collection(firestore, "driverProfiles"), limit(50))
@@ -198,7 +194,6 @@ export default function DashboardPage() {
   if (!mounted) return <div className="fixed inset-0 bg-slate-900" />;
   if (isUserLoading || (user && isUserDataLoading)) return <div className="h-screen w-full flex items-center justify-center bg-slate-900"><Loader2 className="w-8 h-8 animate-spin text-blue-400 opacity-50" /></div>
   
-  // Si no hay usuario o no tiene rol, mostramos LoginScreen
   if (!user || (!isUserDataLoading && !userData?.role)) return <LoginScreen />;
 
   return (

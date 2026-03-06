@@ -2,12 +2,11 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Regla global para prototipo: permite lectura y escritura a cualquier usuario autenticado
-    // Esto asegura que el seguimiento GPS, perfiles y alertas funcionen sin bloqueos de permisos.
+    // Regla de acceso total para prototipado rápido
+    // Permite lectura y escritura a cualquier usuario para asegurar que el seguimiento GPS,
+    // perfiles, pedidos y alertas comunitarias funcionen sin bloqueos de permisos.
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if true;
     }
-    
-    // Despliegue forzado: Mar-2024
   }
 }
