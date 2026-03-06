@@ -39,25 +39,16 @@ import {
   ArrowLeft,
   LayoutDashboard,
   RefreshCcw,
-  ChevronUp,
-  ChevronDown
+  Building2,
+  ShieldCheck,
+  Check
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger,
-  DialogFooter,
-  DialogDescription
-} from "@/components/ui/dialog"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import Link from "next/link"
 
@@ -70,7 +61,7 @@ import {
   addDocumentNonBlocking,
   updateDocumentNonBlocking
 } from "@/firebase"
-import { collection, doc, query, where, orderBy } from "firebase/firestore"
+import { collection, doc, query, where, orderBy, serverTimestamp } from "firebase/firestore"
 import { signOut } from "firebase/auth"
 import { useToast } from "@/hooks/use-toast"
 import { format } from "date-fns"
@@ -84,6 +75,60 @@ const InteractiveMap = dynamic(() => import('@/components/dashboard/InteractiveM
     <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
   </div>
 });
+
+// --- SUB-COMPONENTS ---
+
+function ChatListItem({ order, isAdmin, onClick, isSelected }: { order: any, isAdmin: boolean, onClick: () => void, isSelected: boolean }) {
+  const { firestore } = useFirebase()
+  
+  const companyRef = useMemoFirebase(() => {
+    if (!firestore || !order.companyId) return null
+    return doc(firestore, "companyProfiles", order.companyId)
+  }, [firestore, order.companyId])
+  const { data: companyData } = useDoc(companyRef)
+
+  const driverRef = useMemoFirebase(() => {
+    if (!firestore || !order.driverId) return null
+    return doc(firestore, "users", order.driverId)
+  }, [firestore, order.driverId])
+  const { data: driverData } = useDoc(driverRef)
+
+  const title = isAdmin 
+    ? (driverData ? `${driverData.firstName}` : "Buscando repartidor...")
+    : (companyData?.name || "Empresa Logística")
+
+  return (
+    <Card 
+      className={cn(
+        "cursor-pointer hover:bg-white active:scale-[0.98] transition-all border-none shadow-sm rounded-[32px] group mb-3 overflow-hidden w-full",
+        isSelected ? "bg-white ring-2 ring-primary/10 shadow-md" : "bg-white/60"
+      )}
+      onClick={onClick}
+    >
+      <CardContent className="p-4 flex items-center gap-4">
+        <div className="w-14 h-14 rounded-[22px] bg-slate-100 flex items-center justify-center shrink-0 border border-slate-100 group-hover:bg-primary/5 transition-colors">
+          {isAdmin ? <User className="w-6 h-6 text-slate-400 group-hover:text-primary" /> : <Building2 className="w-6 h-6 text-slate-400 group-hover:text-primary" />}
+        </div>
+        <div className="flex-1 min-w-0 text-left">
+          <div className="flex justify-between items-center mb-0.5">
+            <h3 className="font-black text-sm text-slate-800 truncate uppercase tracking-tight">
+              {title}
+            </h3>
+            <span className="text-[8px] text-slate-400 font-bold uppercase tracking-tighter">
+              {order.updatedAt ? format(new Date(order.updatedAt), 'HH:mm') : '...'}
+            </span>
+          </div>
+          <div className="flex justify-between items-center">
+            <p className="text-[10px] text-slate-500 truncate font-bold uppercase tracking-tight">
+              #{order.id.substring(0, 5)} • {order.status}
+            </p>
+            {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-primary" />}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
 const CoroItem = ({ alert, userId, onOpenChat }: { alert: any, userId: string, onOpenChat: (id: string) => void }) => {
   const Icon = alert.type === 'policia' ? ShieldAlert : 
@@ -222,15 +267,17 @@ const LoginScreen = () => (
   </div>
 )
 
+// --- MAIN PAGE ---
+
 export default function DashboardPage() {
-  // --- 1. HOOKS AT THE TOP (ABSOLUTE) ---
+  // --- 1. HOOKS AT THE TOP (STRICT ORDER) ---
   const router = useRouter()
   const searchParams = useSearchParams()
   const { firestore, auth } = useFirebase()
   const { user, isUserLoading } = useUser()
   const { toast } = useToast()
 
-  // Component States
+  // State
   const [activeTab, setActiveTab] = useState('ruta')
   const [isExpanded, setIsExpanded] = useState(false)
   const [isMapFullscreen, setIsMapFullscreen] = useState(false)
@@ -251,16 +298,16 @@ export default function DashboardPage() {
   const [optimizedRouteData, setOptimizedRouteData] = useState<DriverRouteOptimizationOutput | null>(null)
   const chatScrollRef = useRef<HTMLDivElement>(null)
 
-  // Memoized Firebase Queries
+  // Memoized Queries
   const userRef = useMemoFirebase(() => (!firestore || !user?.uid) ? null : doc(firestore, "users", user.uid), [user?.uid, firestore])
   const alertsQuery = useMemoFirebase(() => !firestore ? null : query(collection(firestore, "alerts"), orderBy("createdAt", "desc")), [firestore])
   const pendingOrdersQuery = useMemoFirebase(() => !firestore ? null : query(collection(firestore, "orders"), where("status", "==", "Pending")), [firestore])
   const driverActiveOrdersQuery = useMemoFirebase(() => (!firestore || !user?.uid) ? null : query(collection(firestore, "orders"), where("driverId", "==", user.uid), where("status", "in", ["Assigned", "Picked Up", "In Transit"])), [user?.uid, firestore])
   const orderHistoryQuery = useMemoFirebase(() => (!firestore || !user?.uid) ? null : query(collection(firestore, "orders"), where("driverId", "==", user.uid)), [user?.uid, firestore])
-  const orderChatMessagesQuery = useMemoFirebase(() => (!firestore || !selectedChatOrderId) ? null : query(collection(firestore, `orders/${selectedChatOrderId}/chatMessages`), orderBy("timestamp", "asc")), [selectedChatOrderId, firestore])
+  const orderChatMessagesQuery = useMemoFirebase(() => (!firestore || !selectedChatOrderId) ? null : query(collection(firestore, `orders/${selectedChatOrderId}/messages`), orderBy("timestamp", "asc")), [selectedChatOrderId, firestore])
   const alertChatMessagesQuery = useMemoFirebase(() => (!firestore || !selectedChatAlertId) ? null : query(collection(firestore, `alerts/${selectedChatAlertId}/messages`), orderBy("timestamp", "asc")), [selectedChatAlertId, firestore])
 
-  // Real-time Data Listeners
+  // Data
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userRef)
   const { data: alerts } = useCollection(alertsQuery)
   const { data: pendingOrders } = useCollection(pendingOrdersQuery)
@@ -269,16 +316,10 @@ export default function DashboardPage() {
   const { data: orderChatMessages } = useCollection(orderChatMessagesQuery)
   const { data: alertChatMessages } = useCollection(alertChatMessagesQuery)
 
-  // Derived Values
+  const isAdmin = userData?.role === 'Admin'
   const activeOrder = useMemo(() => driverActiveOrders?.[0], [driverActiveOrders])
   const isCentralLayout = useMemo(() => activeTab === 'central', [activeTab])
   const hasActiveSOS = useMemo(() => alerts?.some(a => a.type === 'sos') || false, [alerts])
-  const filteredAlerts = useMemo(() => {
-    if (alertFilter === 'mine' && user?.uid) {
-      return alerts?.filter(a => a.authorId === user.uid) || []
-    }
-    return alerts || []
-  }, [alerts, alertFilter, user?.uid])
 
   // --- 2. EFFECTS ---
   useEffect(() => {
@@ -311,7 +352,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (chatScrollRef.current) {
-      chatScrollRef.current.scrollTo(0, chatScrollRef.current.scrollHeight)
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight
     }
   }, [selectedChatOrderId, selectedChatAlertId, orderChatMessages?.length, alertChatMessages?.length])
 
@@ -339,21 +380,24 @@ export default function DashboardPage() {
     const activeId = selectedChatOrderId || (activeTab === 'chat' && activeOrder?.id);
     
     if (activeId) {
-      addDocumentNonBlocking(collection(firestore, `orders/${activeId}/chatMessages`), {
+      addDocumentNonBlocking(collection(firestore, `orders/${activeId}/messages`), {
         authorId: user.uid,
+        authorName: userData?.firstName || "Repartidor",
         content: chatMessageText,
-        timestamp: new Date().toISOString()
+        timestamp: serverTimestamp(),
+        isReadByDriver: !isAdmin,
+        isReadByCompany: isAdmin
       })
     } else if (selectedChatAlertId) {
       addDocumentNonBlocking(collection(firestore, `alerts/${selectedChatAlertId}/messages`), {
         authorId: user.uid,
         authorName: userData?.firstName || "Repartidor",
         content: chatMessageText,
-        timestamp: new Date().toISOString()
+        timestamp: serverTimestamp()
       })
     }
     setChatMessageText("")
-  }, [chatMessageText, user?.uid, firestore, selectedChatOrderId, selectedChatAlertId, activeTab, activeOrder?.id, userData?.firstName])
+  }, [chatMessageText, user?.uid, firestore, selectedChatOrderId, selectedChatAlertId, activeTab, activeOrder?.id, userData?.firstName, isAdmin])
 
   const handleAcceptOrder = useCallback((orderId: string) => {
     if (!user?.uid || !firestore) return
@@ -404,66 +448,80 @@ export default function DashboardPage() {
   // --- 5. CENTRAL FULLSCREEN LAYOUT ---
   if (isCentralLayout) {
     return (
-      <div className="h-screen w-full bg-white flex flex-col animate-in fade-in duration-500 z-[100]">
-        <header className="p-8 flex items-center gap-6 border-b border-slate-100 bg-white sticky top-0 z-50">
+      <div className="h-screen w-full bg-[#f2f1f4] flex flex-col animate-in fade-in duration-500 z-[100]">
+        <header className="p-8 flex items-center gap-6 border-b border-slate-100 bg-white sticky top-0 z-50 rounded-b-[40px] shadow-sm">
           <Button variant="ghost" size="icon" className="h-14 w-14 rounded-full bg-slate-50" onClick={() => setActiveTab('ruta')}>
             <ArrowLeft className="h-7 w-7 text-slate-900" />
           </Button>
           <div className="flex-1">
-            <h1 className="text-5xl font-black tracking-tighter text-slate-900 leading-tight">Central</h1>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Historial Mensajes Privados</p>
+            <h1 className="text-5xl font-black tracking-tighter text-slate-900 leading-tight uppercase">Central</h1>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Historial de Mensajes Privados</p>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-8 bg-slate-50/30">
-          {(selectedChatOrderId || selectedChatAlertId) ? (
+        <div className="flex-1 overflow-y-auto p-8 scrollbar-hide">
+          {(selectedChatOrderId) ? (
             <div className="h-full flex flex-col bg-white rounded-[3rem] shadow-xl border border-slate-100 overflow-hidden">
                <header className="flex items-center gap-4 p-8 border-b border-slate-50 bg-white">
-                  <Button variant="ghost" size="icon" onClick={() => { setSelectedChatOrderId(null); setSelectedChatAlertId(null); }} className="rounded-full h-12 w-12 bg-slate-50"><ChevronLeft className="w-6 h-6" /></Button>
+                  <Button variant="ghost" size="icon" onClick={() => { setSelectedChatOrderId(null); }} className="rounded-full h-12 w-12 bg-slate-50"><ChevronLeft className="w-6 h-6" /></Button>
                   <div>
                     <h2 className="text-xl font-black tracking-tight uppercase">
-                      {selectedChatOrderId ? `Orden #${selectedChatOrderId.substring(0, 5)}` : `Reporte Comunidad`}
+                      Orden #{selectedChatOrderId.substring(0, 5)}
                     </h2>
-                    <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Archivo Histórico</p>
+                    <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Archivo de Coordinación</p>
                   </div>
                 </header>
                 <div ref={chatScrollRef} className="flex-1 overflow-y-auto space-y-4 p-8 scrollbar-hide bg-slate-50/50">
-                  {(selectedChatOrderId ? orderChatMessages : alertChatMessages)?.map((msg) => (
+                   <div className="bg-white/60 backdrop-blur-sm rounded-3xl p-5 mb-6 text-center space-y-2 border border-white/50">
+                    <ShieldCheck className="w-8 h-8 text-emerald-500 mx-auto" />
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Canal Directo Seguro</p>
+                    <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                      Mensajes privados para coordinar la entrega.
+                    </p>
+                  </div>
+                  {orderChatMessages?.map((msg) => (
                     <div key={msg.id} className={cn("flex", msg.authorId === user.uid ? 'justify-end' : 'justify-start')}>
                       <div className={cn("max-w-[75%] p-6 rounded-[2rem] text-sm shadow-sm", msg.authorId === user.uid ? 'bg-slate-900 text-white rounded-tr-none' : 'bg-white text-slate-800 rounded-tl-none border border-slate-100')}>
-                        {msg.authorName && msg.authorId !== user.uid && <p className="text-[10px] font-black mb-2 opacity-50 uppercase tracking-widest">{msg.authorName}</p>}
                         <p className="font-medium leading-relaxed">{msg.content}</p>
+                        <div className="flex justify-end items-center gap-1 mt-2">
+                          <p className="text-[7px] font-black opacity-40 uppercase tracking-tighter">
+                            {msg.timestamp ? format(msg.timestamp.toDate(), 'HH:mm') : '...'}
+                          </p>
+                          {msg.authorId === user.uid && <Check className="w-2.5 h-2.5 text-blue-300" />}
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
+                <div className="p-6 bg-white border-t flex items-center gap-4">
+                  <Input placeholder="Escribe un mensaje..." className="h-16 bg-slate-50 border-none rounded-full px-8 font-medium shadow-inner flex-1" value={chatMessageText} onChange={(e) => setChatMessageText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendChatMessage()} />
+                  <Button onClick={handleSendChatMessage} size="icon" className="h-16 w-16 rounded-full bg-[#79d3b4] text-white shadow-xl shrink-0"><Send className="w-6 h-6" /></Button>
+                </div>
             </div>
           ) : (
-            <div className="max-w-4xl mx-auto space-y-6">
+            <div className="max-w-4xl mx-auto space-y-4">
                <div className="flex items-center gap-4 mb-8">
                   <div className="h-14 w-14 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-xl">
                     <MessageSquare className="h-7 w-7" />
                   </div>
-                  <h3 className="text-2xl font-black uppercase tracking-tight">Archivo de Mensajería</h3>
+                  <h3 className="text-2xl font-black uppercase tracking-tight">Archivo de Chats</h3>
                </div>
-               {orderHistory?.map(order => (
-                  <div key={order.id} className="rounded-[40px] bg-white border border-slate-100 p-8 flex items-center justify-between hover:shadow-2xl hover:scale-[1.02] transition-all cursor-pointer group" onClick={() => { setSelectedChatOrderId(order.id); setSelectedChatAlertId(null); }}>
-                    <div className="flex items-center gap-6">
-                      <div className="w-20 h-20 rounded-[32px] bg-slate-50 flex items-center justify-center border border-slate-100 group-hover:bg-slate-900 transition-colors">
-                        <MessageSquare className="w-8 h-8 text-slate-900 group-hover:text-white transition-colors" />
-                      </div>
-                      <div className="text-left">
-                        <h4 className="font-black text-slate-900 text-xl uppercase tracking-tighter">ORDEN #{order.id.substring(0, 5)}</h4>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="secondary" className="bg-slate-100 text-slate-500 font-black text-[9px] uppercase tracking-widest px-3 py-1">PRIVADO</Badge>
-                          <span className="text-slate-200">•</span>
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{order.status}</p>
-                        </div>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-8 h-8 text-slate-200 group-hover:text-slate-900 transition-colors" />
-                  </div>
-                ))}
+               {orderHistory && orderHistory.length > 0 ? (
+                 orderHistory.map(order => (
+                    <ChatListItem 
+                      key={order.id} 
+                      order={order} 
+                      isAdmin={isAdmin} 
+                      onClick={() => setSelectedChatOrderId(order.id)} 
+                      isSelected={selectedChatOrderId === order.id} 
+                    />
+                  ))
+               ) : (
+                 <div className="text-center py-20 opacity-30 space-y-4 bg-white rounded-[3rem] border border-slate-100">
+                    <MessageSquare className="w-12 h-12 mx-auto" />
+                    <p className="text-xs font-black uppercase tracking-[0.2em]">No hay chats históricos.</p>
+                 </div>
+               )}
             </div>
           )}
         </div>
@@ -590,7 +648,6 @@ export default function DashboardPage() {
         
         {/* BARRA DE HERRAMIENTAS INTEGRADA EN LA CABECERA DEL PANEL */}
         <div className="h-28 w-full flex flex-col items-center justify-center shrink-0 bg-white border-b border-slate-50">
-          {/* DRAG HANDLE */}
           <div className="h-8 w-full flex items-center justify-center cursor-pointer active:bg-slate-50" onClick={() => setIsExpanded(!isExpanded)}>
             <div className={cn("w-20 h-2 rounded-full", hasActiveSOS ? "bg-red-600 animate-pulse" : "bg-slate-200")}></div>
           </div>
@@ -658,7 +715,6 @@ export default function DashboardPage() {
         </div>
         
         <div className="flex-1 overflow-y-auto px-8 pb-20 scrollbar-hide">
-          {/* TAB CONTENT: RUTA (AI PLANNER) */}
           {activeTab === 'ruta' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-left pt-6">
                <header className="flex justify-between items-start mb-10">
@@ -747,7 +803,6 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* TAB CONTENT: PEDIDOS */}
           {activeTab === 'pedidos' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-left pt-6">
               <div className="flex items-center gap-6 mb-10">
@@ -774,7 +829,6 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* TAB CONTENT: CHAT EN TIEMPO REAL (SOLO PEDIDO ACTIVO) */}
           {activeTab === 'chat' && activeOrder && (
              <div className="h-[550px] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-500 text-left pt-6 pb-4">
                 <header className="flex items-center gap-4 mb-6">
@@ -791,6 +845,11 @@ export default function DashboardPage() {
                     <div key={msg.id} className={cn("flex", msg.authorId === user.uid ? 'justify-end' : 'justify-start')}>
                       <div className={cn("max-w-[85%] p-5 rounded-[2rem] text-sm shadow-sm", msg.authorId === user.uid ? 'bg-slate-900 text-white rounded-tr-none' : 'bg-white text-slate-800 rounded-tl-none border border-slate-100')}>
                         <p className="font-medium leading-relaxed">{msg.content}</p>
+                        <div className="flex justify-end items-center gap-1 mt-1">
+                          <p className="text-[7px] font-black opacity-40 uppercase">
+                            {msg.timestamp ? format(msg.timestamp.toDate(), 'HH:mm') : '...'}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -802,7 +861,6 @@ export default function DashboardPage() {
              </div>
           )}
 
-          {/* TAB CONTENT: ALERTA */}
           {activeTab === 'alerta' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-left pt-6">
               <header className="flex items-center justify-between mb-10">
