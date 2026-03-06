@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview This file implements a Genkit flow for a conversational driver copilot.
@@ -72,7 +73,7 @@ async function toWav(
   rate = 24000,
   sampleWidth = 2
 ): Promise<string> {
-  // Carga dinámica de wav para evitar errores de compilación en Next.js
+  // CARGA DINÁMICA: Evita que NextJS intente resolver 'wav' en el cliente
   const wav = require('wav');
   return new Promise((resolve, reject) => {
     const writer = new wav.Writer({

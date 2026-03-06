@@ -2,10 +2,8 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Regla global para permitir lectura y escritura a cualquier usuario autenticado
-    // Esto facilita el desarrollo y prototipado rápido de las funciones de Empresa y Driver
-    // ya que permite crear los perfiles iniciales en /users, /driverProfiles y /companyProfiles
-    // inmediatamente después del inicio de sesión anónimo.
+    // Regla de desarrollo: Permite acceso a usuarios autenticados para evitar errores de permisos 
+    // en la creación de perfiles iniciales de Empresa y Repartidor.
     match /{document=**} {
       allow read, write: if request.auth != null;
     }

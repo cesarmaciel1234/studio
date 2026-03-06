@@ -32,6 +32,7 @@ export function LoginScreen() {
           const userId = userCredential.user.uid
           
           // 1. Crear documento maestro de usuario con el rol correspondiente
+          // Este documento es el que leerá DashboardPage para "desactivar" el login
           setDocumentNonBlocking(doc(firestore, "users", userId), {
             id: userId,
             email: `${userId}@rutarapida.com`,
@@ -60,7 +61,7 @@ export function LoginScreen() {
               email: `${userId}@rutarapida.com`,
               availabilityStatus: "Available",
               vehicleType: "Motorcycle",
-              role: "Driver", // Denormalizado para QAPs
+              role: "Driver",
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString()
             }, { merge: true })
@@ -78,7 +79,6 @@ export function LoginScreen() {
 
   return (
     <div className="h-screen w-full bg-[#0F172A] flex flex-col justify-center items-center text-center p-8 overflow-hidden relative">
-      {/* Background decoration */}
       <div className="absolute top-[-10%] left-[-10%] w-64 h-64 bg-blue-600/10 rounded-full blur-3xl animate-pulse" />
       <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-emerald-600/10 rounded-full blur-3xl animate-pulse delay-700" />
       

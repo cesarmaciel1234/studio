@@ -5,7 +5,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Target, Package, User, Truck, ShieldAlert, Layers, LogOut, Navigation, MapPin, MessageCircle, Send, X, ShieldCheck, Phone, Check, Loader2, Sparkles, Menu, Clock, AlertTriangle, Users } from "lucide-react"
+import { Target, Package, User, Truck, ShieldAlert, Layers, LogOut, Navigation, MapPin, MessageCircle, Send, X, ShieldCheck, Phone, Check, Loader2, Sparkles, Menu, Clock, AlertTriangle, Users, Pencil } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
@@ -64,9 +64,10 @@ export default function DashboardPage() {
 
   useEffect(() => { setMounted(true) }, [])
 
+  // CORRECCIÓN: Buscamos en 'users' para encontrar el rol independientemente del tipo de perfil
   const userDocRef = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null
-    return doc(firestore, "driverProfiles", user.uid)
+    return doc(firestore, "users", user.uid)
   }, [firestore, user?.uid])
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
   const isAdmin = userData?.role === 'Admin'
@@ -79,7 +80,7 @@ export default function DashboardPage() {
           setCurrentCoords(coords)
           if (position.coords.heading !== null) setHeading(position.coords.heading)
           
-          if (!isUserLoading && user?.uid && firestore) {
+          if (!isUserLoading && user?.uid && firestore && userData?.role === 'Driver') {
             const dRef = doc(firestore, "driverProfiles", user.uid)
             setDocumentNonBlocking(dRef, {
               currentLatitude: coords.lat,
@@ -93,7 +94,7 @@ export default function DashboardPage() {
       )
       return () => navigator.geolocation.clearWatch(watchId)
     }
-  }, [isUserLoading, user?.uid, firestore])
+  }, [isUserLoading, user?.uid, firestore, userData?.role])
 
   const fleetQuery = useMemoFirebase(() => {
     if (!firestore || !isAdmin) return null
@@ -192,6 +193,8 @@ export default function DashboardPage() {
 
   if (!mounted) return <div className="fixed inset-0 bg-slate-900" />;
   if (isUserLoading || (user && isUserDataLoading)) return <div className="h-screen w-full flex items-center justify-center bg-slate-900"><Loader2 className="w-8 h-8 animate-spin text-blue-400 opacity-50" /></div>
+  
+  // CORRECCIÓN: Si el usuario existe pero no tiene rol asignado todavía, mostramos LoginScreen
   if (!user || (!isUserDataLoading && !userData?.role)) return <LoginScreen />;
 
   return (
@@ -219,15 +222,22 @@ export default function DashboardPage() {
             <div className="p-8 space-y-8 h-full flex flex-col">
               <SheetHeader className="text-left">
                 <div className="flex items-center gap-4">
-                  <Avatar className="w-20 h-20 shadow-xl border-4 border-slate-50">
-                    <AvatarImage src={user?.photoURL || ""} />
-                    <AvatarFallback className="bg-slate-100 font-black">{userData?.firstName?.substring(0,2) || "UR"}</AvatarFallback>
-                  </Avatar>
+                  <div className="relative">
+                    <Avatar className="w-20 h-20 shadow-xl border-4 border-slate-50">
+                      <AvatarImage src={user?.photoURL || ""} />
+                      <AvatarFallback className="bg-slate-100 font-black">{userData?.firstName?.substring(0,2) || "UR"}</AvatarFallback>
+                    </Avatar>
+                    <div className="absolute -bottom-1 -right-1 p-1.5 bg-white rounded-full shadow-lg border border-slate-100">
+                      <Pencil className="h-3 w-3 text-slate-300" />
+                    </div>
+                  </div>
                   <div className="flex-1 min-w-0">
                     <SheetTitle className="text-2xl font-black tracking-tighter">
-                      {userData?.firstName || "Repartidor"}
+                      {userData?.firstName || "Usuario"}
                     </SheetTitle>
-                    <p className="text-xs font-bold text-slate-400 truncate">ID: {user.uid.substring(0,8)}</p>
+                    <Badge variant="secondary" className="text-[8px] font-black uppercase tracking-widest mt-1">
+                      {isAdmin ? "CENTRO CONTROL" : "REPARTIDOR"}
+                    </Badge>
                   </div>
                 </div>
               </SheetHeader>
@@ -243,7 +253,7 @@ export default function DashboardPage() {
                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
                      <Package className="w-5 h-5 text-blue-500" />
                    </div>
-                   <span className="font-bold text-slate-800 text-sm">Mis Entregas</span>
+                   <span className="font-bold text-slate-800 text-sm">Historial</span>
                  </Link>
                  
                  <div className="pt-6 px-2">
