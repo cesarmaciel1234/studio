@@ -31,7 +31,11 @@ import {
   Bot,
   Compass,
   Zap,
-  MoreHorizontal
+  MoreHorizontal,
+  Target,
+  Maximize,
+  Sparkles,
+  X
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -252,7 +256,7 @@ export default function DashboardPage() {
   const { data: orderChatMessages } = useCollection(orderChatMessagesQuery)
   const { data: alertChatMessages } = useCollection(alertChatMessagesQuery)
 
-  // --- HOOKS DE MEMOIZACIÓN DERIVADOS (REPARADOS PARA CUMPLIR REGLAS DE HOOKS) ---
+  // --- HOOKS DE MEMOIZACIÓN DERIVADOS ---
   const hasActiveSOS = useMemo(() => alerts?.some(a => a.type === 'sos') || false, [alerts])
   const activeOrder = useMemo(() => driverActiveOrders?.[0], [driverActiveOrders])
   const sheetY = useMemo(() => isMapFullscreen ? 'calc(100% - 40px)' : (isExpanded ? '0' : 'calc(100% - 160px)'), [isMapFullscreen, isExpanded])
@@ -288,19 +292,6 @@ export default function DashboardPage() {
   }, [selectedChatOrderId, selectedChatAlertId, orderChatMessages?.length, alertChatMessages?.length])
 
   // --- MANEJADORES ---
-  
-  /**
-   * FLUJO DE ACTIVACIÓN DE ALERTA COMUNITARIA:
-   * 1. Activación: En el panel deslizable inferior, hay una pestaña con un ícono de escudo (ShieldAlert). Al hacer clic, la aplicación activa la sección de "Coro Driver".
-   * 2. Botones de Tipo de Alerta: Dentro de esta sección, se presenta una barra horizontal con botones para los diferentes tipos de alerta: "Control", "Tráfico", "Peligro" y "Obras".
-   * 3. Disparador de Diálogo: Cada uno de estos botones es un DialogTrigger que abre una ventana emergente cuando se presiona.
-   * 4. Guardado de Estado: Al hacer clic en un botón, se guarda el tipo de alerta seleccionado en selectedAlertType.
-   * 5. Ingreso de Información: Dentro del diálogo, el usuario ingresa una descripción en el Textarea.
-   * 6. Botón de Publicación: El botón "PUBLICAR" ejecuta handlePublishAlert.
-   * 7. Recopilación de Datos: Se reúne el tipo de alerta, la etiqueta, la descripción, coordenadas GPS actuales y la ID del usuario.
-   * 8. Creación en Firestore: Se añade el documento a la colección 'alerts'.
-   * 9. Cierre y Notificación: Finalmente se cierra el diálogo y se muestra un toast.
-   */
   const handlePublishAlert = useCallback(() => {
     if (!selectedAlertType || !user?.uid || !firestore || !currentCoords) return
     addDocumentNonBlocking(collection(firestore, "alerts"), {
@@ -348,7 +339,7 @@ export default function DashboardPage() {
     toast({ title: "Pedido Asignado Correctamente" })
   }, [user?.uid, firestore, toast])
 
-  // --- RETORNOS TEMPRANOS (SIEMPRE DESPUÉS DE LOS HOOKS) ---
+  // --- RETORNOS TEMPRANOS ---
   if (!mounted) return null
   if (isUserLoading || (user && isUserDataLoading)) return <div className="h-screen w-full flex items-center justify-center bg-slate-900 text-white"><Loader2 className="animate-spin" /></div>
   if (!user) return <LoginScreen />
@@ -424,25 +415,41 @@ export default function DashboardPage() {
             </div>
           </SheetContent>
         </Sheet>
+      </div>
 
-        <div className="flex gap-4 pointer-events-auto">
-          <Button 
-            variant="secondary" 
-            size="icon" 
-            onClick={() => setMapCenterTrigger(t => t + 1)}
-            className="h-16 w-16 rounded-[1.5rem] shadow-2xl bg-white/95 backdrop-blur-md border-none text-blue-600"
-          >
-            <Compass className="h-7 w-7" />
-          </Button>
-          <Button 
-            variant="secondary" 
-            size="icon" 
-            onClick={() => setIsAiAssistantOpen(true)}
-            className="h-16 w-16 rounded-[1.5rem] shadow-2xl bg-slate-900 border-none text-white hover:bg-black"
-          >
-            <Bot className="h-7 w-7" />
-          </Button>
-        </div>
+      {/* RESTORED FLOATING ACTION STACK */}
+      <div className="absolute top-8 right-8 z-10 flex flex-col gap-4 pointer-events-auto">
+        <Button 
+          variant="secondary" 
+          size="icon" 
+          className="h-20 w-20 rounded-full shadow-2xl bg-[#1e293b] border-none text-slate-400 hover:text-white transition-all"
+        >
+          <Compass className="h-8 w-8" />
+        </Button>
+        <Button 
+          variant="secondary" 
+          size="icon" 
+          onClick={() => setMapCenterTrigger(t => t + 1)}
+          className="h-20 w-20 rounded-full shadow-2xl bg-white border-none text-slate-900 flex items-center justify-center"
+        >
+          <Target className="h-8 w-8" />
+        </Button>
+        <Button 
+          variant="secondary" 
+          size="icon" 
+          onClick={() => setIsMapFullscreen(!isMapFullscreen)}
+          className="h-20 w-20 rounded-full shadow-2xl bg-white border-none text-slate-900"
+        >
+          <Maximize className="h-8 w-8" />
+        </Button>
+        <Button 
+          variant="secondary" 
+          size="icon" 
+          onClick={() => setIsAiAssistantOpen(true)}
+          className="h-20 w-20 rounded-full shadow-2xl bg-[#2563eb] border-none text-white hover:bg-blue-700"
+        >
+          <Sparkles className="h-8 w-8" />
+        </Button>
       </div>
 
       {/* AI ASSISTANT OVERLAY */}
