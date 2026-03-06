@@ -1,9 +1,11 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Reglas maestras para prototipado en RutaRápida Pro
     match /{document=**} {
-      // Permitimos lectura y escritura completa para prototipado rápido a usuarios autenticados.
-      // Esto previene errores de "Missing or insufficient permissions" en listados de pedidos y chats.
+      // Permite lectura y escritura si el usuario está autenticado.
+      // Esto es crítico para que la empresa y el repartidor vean pedidos y chats.
       allow read, write: if request.auth != null;
     }
   }
