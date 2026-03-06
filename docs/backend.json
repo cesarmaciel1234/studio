@@ -53,8 +53,12 @@
         "id": { "type": "string" },
         "clientName": { "type": "string" },
         "deliveryAddress": { "type": "string" },
+        "originName": { "type": "string" },
         "status": { "type": "string" },
-        "driverId": { "type": "string" }
+        "driverId": { "type": "string" },
+        "reward": { "type": "number" },
+        "timeEstimate": { "type": "string" },
+        "distanceEstimate": { "type": "string" }
       },
       "required": ["id", "clientName", "deliveryAddress", "status"]
     }

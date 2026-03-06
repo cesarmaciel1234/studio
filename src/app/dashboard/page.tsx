@@ -44,7 +44,8 @@ import {
   PlusCircle,
   Leaf,
   Users,
-  Heart
+  Heart,
+  Boxes
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -143,7 +144,83 @@ const CoroItem = ({ alert, userId, onOpenChat }: { alert: any, userId: string, o
   )
 }
 
-const DriverOrderCard = ({ order, index, onOpenChat }: any) => {
+const PendingOrderCard = ({ order, onAccept }: { order: any, onAccept: (id: string) => void }) => {
+  return (
+    <Card className="rounded-[40px] border-none shadow-[0_20px_50px_rgba(0,0,0,0.05)] bg-white overflow-hidden mb-6 p-8">
+      {/* Header Recompensa */}
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center">
+            <div className="w-6 h-6 rounded-lg border-2 border-slate-200" />
+          </div>
+          <div>
+            <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">RECOMPENSA</p>
+            <p className="text-3xl font-black text-emerald-500 tracking-tighter">
+              +${order.reward || "1,500"}
+            </p>
+          </div>
+        </div>
+        <Badge className="bg-orange-100 text-orange-600 border-none font-black text-[10px] py-1 px-3 rounded-lg">
+          INMEDIATO
+        </Badge>
+      </div>
+
+      <div className="relative pl-12 pb-8">
+        {/* Timeline Line */}
+        <div className="absolute left-[23px] top-6 bottom-6 w-[2px] border-l-2 border-dashed border-slate-100" />
+        
+        {/* Recojo */}
+        <div className="relative mb-10">
+          <div className="absolute -left-[38px] top-0 w-11 h-11 rounded-full bg-white shadow-xl flex items-center justify-center border border-slate-50 z-10">
+            <div className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center">
+              <Store className="w-3.5 h-3.5 text-blue-500" />
+            </div>
+          </div>
+          <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">PUNTO DE RECOJO</p>
+          <h4 className="text-lg font-black text-slate-900 tracking-tight leading-none mb-1 uppercase">
+            {order.originName || "Empresa Central"}
+          </h4>
+          <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">ORIGEN EMPRESA</p>
+        </div>
+
+        {/* Entrega Final */}
+        <div className="relative">
+          <div className="absolute -left-[38px] top-0 w-11 h-11 rounded-full bg-white shadow-xl flex items-center justify-center border border-slate-50 z-10">
+             <div className="w-6 h-6 rounded-full bg-emerald-50 flex items-center justify-center">
+              <MapPin className="w-3.5 h-3.5 text-emerald-500" />
+            </div>
+          </div>
+          <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">ENTREGA FINAL</p>
+          <h4 className="text-lg font-black text-slate-900 tracking-tight leading-tight uppercase max-w-[220px]">
+            {order.deliveryAddress || "Dirección Nacional de Migraciones"}
+          </h4>
+        </div>
+      </div>
+
+      {/* Footer Acciones */}
+      <div className="flex items-center justify-between pt-6 border-t border-slate-50">
+        <div className="flex gap-6">
+          <div className="text-left">
+            <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-1">TIEMPO</p>
+            <p className="text-xl font-black text-slate-900">{order.timeEstimate || "8m"}</p>
+          </div>
+          <div className="text-left">
+            <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-1">DISTANCIA</p>
+            <p className="text-xl font-black text-blue-600">{order.distanceEstimate || "671m"}</p>
+          </div>
+        </div>
+        <Button 
+          onClick={() => onAccept(order.id)}
+          className="h-16 px-10 rounded-[2rem] bg-slate-950 hover:bg-black text-white font-black text-sm tracking-tight shadow-2xl"
+        >
+          ACEPTAR CARGA
+        </Button>
+      </div>
+    </Card>
+  )
+}
+
+const DriverOrderCardShort = ({ order, index, onOpenChat }: any) => {
   return (
     <Card className="rounded-[32px] border-none shadow-lg bg-white overflow-hidden mb-4">
       <div className="p-6 flex items-center gap-4">
@@ -178,7 +255,6 @@ const LoginScreen = () => (
 )
 
 export default function DashboardPage() {
-  // --- CRÍTICO: TODOS LOS HOOKS DEBEN ESTAR AL INICIO ---
   const router = useRouter()
   const { firestore, auth } = useFirebase()
   const { user, isUserLoading } = useUser()
@@ -201,26 +277,23 @@ export default function DashboardPage() {
   const [chatMessageText, setChatMessageText] = useState("")
   const chatScrollRef = useRef<HTMLDivElement>(null)
 
-  // Consultas a Firebase (Memoizadas para cumplir con las reglas de Hooks)
+  // Memoización de Consultas a Firebase
   const userRef = useMemoFirebase(() => (!firestore || !user?.uid) ? null : doc(firestore, "users", user.uid), [user?.uid, firestore])
-  const { data: userData, isLoading: isUserDataLoading } = useDoc(userRef)
-  
   const alertsQuery = useMemoFirebase(() => !firestore ? null : query(collection(firestore, "alerts"), orderBy("createdAt", "desc")), [firestore])
-  const { data: alerts } = useCollection(alertsQuery)
-
   const pendingOrdersQuery = useMemoFirebase(() => !firestore ? null : query(collection(firestore, "orders"), where("status", "==", "Pending")), [firestore])
-  const { data: pendingOrders } = useCollection(pendingOrdersQuery)
-
   const driverActiveOrdersQuery = useMemoFirebase(() => (!firestore || !user?.uid) ? null : query(collection(firestore, "orders"), where("driverId", "==", user.uid), where("status", "in", ["Assigned", "Picked Up", "In Transit"])), [user?.uid, firestore])
-  const { data: driverActiveOrders } = useCollection(driverActiveOrdersQuery)
-
   const orderChatMessagesQuery = useMemoFirebase(() => (!firestore || !selectedChatOrderId) ? null : query(collection(firestore, `orders/${selectedChatOrderId}/chatMessages`), orderBy("timestamp", "asc")), [selectedChatOrderId, firestore])
-  const { data: orderChatMessages } = useCollection(orderChatMessagesQuery)
-
   const alertChatMessagesQuery = useMemoFirebase(() => (!firestore || !selectedChatAlertId) ? null : query(collection(firestore, `alerts/${selectedChatAlertId}/messages`), orderBy("timestamp", "asc")), [selectedChatAlertId, firestore])
+
+  // Hooks de Datos
+  const { data: userData, isLoading: isUserDataLoading } = useDoc(userRef)
+  const { data: alerts } = useCollection(alertsQuery)
+  const { data: pendingOrders } = useCollection(pendingOrdersQuery)
+  const { data: driverActiveOrders } = useCollection(driverActiveOrdersQuery)
+  const { data: orderChatMessages } = useCollection(orderChatMessagesQuery)
   const { data: alertChatMessages } = useCollection(alertChatMessagesQuery)
 
-  // Memorización de estados derivados (Antes de los retornos condicionales)
+  // Memoización de estados derivados (ANTES de retornos condicionales)
   const hasActiveSOS = useMemo(() => alerts?.some(a => a.type === 'sos') || false, [alerts])
   const activeOrder = useMemo(() => driverActiveOrders?.[0], [driverActiveOrders])
   const sheetY = useMemo(() => isMapFullscreen ? 'calc(100% - 40px)' : (isExpanded ? '0' : 'calc(100% - 160px)'), [isMapFullscreen, isExpanded])
@@ -257,13 +330,6 @@ export default function DashboardPage() {
 
   // Manejadores de eventos (Memorizados)
   const handlePublishAlert = useCallback(() => {
-    /**
-     * FLUJO DE CORO DRIVER (ALERTA COMUNITARIA):
-     * 1. Activación: En el panel inferior (ícono ShieldAlert).
-     * 2. Selección: Se elige un tipo (Control, Tráfico, Peligro, Obras).
-     * 3. Diálogo: Abre DialogTrigger y guarda el estado en selectedAlertType.
-     * 4. Publicación: handlePublishAlert recopila descripción + GPS + ID y crea el doc en alerts.
-     */
     if (!selectedAlertType || !user?.uid || !firestore || !currentCoords) return
     addDocumentNonBlocking(collection(firestore, "alerts"), {
       type: selectedAlertType.id,
@@ -283,7 +349,6 @@ export default function DashboardPage() {
 
   const handleSendChatMessage = useCallback(() => {
     if (!chatMessageText.trim() || !user?.uid || !firestore) return
-    
     if (selectedChatOrderId) {
       addDocumentNonBlocking(collection(firestore, `orders/${selectedChatOrderId}/chatMessages`), {
         authorId: user.uid,
@@ -308,17 +373,16 @@ export default function DashboardPage() {
       status: "Assigned", 
       updatedAt: new Date().toISOString() 
     })
-    toast({ title: "Pedido Asignado" })
+    toast({ title: "Pedido Asignado Correctamente" })
   }, [user?.uid, firestore, toast])
 
-  // --- RENDERS CONDICIONALES ---
   if (!mounted) return null
   if (isUserLoading || (user && isUserDataLoading)) return <div className="h-screen w-full flex items-center justify-center bg-slate-900 text-white"><Loader2 className="animate-spin" /></div>
   if (!user) return <LoginScreen />
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-slate-50">
-      {/* MAPA INTERACTIVO (Z-0) */}
+      {/* MAPA INTERACTIVO */}
       <div className="absolute inset-0 z-0">
         <InteractiveMap 
           center={currentCoords ? [currentCoords.lat, currentCoords.lng] : [19.4326, -99.1332]} 
@@ -331,7 +395,7 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* BOTÓN MENÚ LATERAL (TOP LEFT) */}
+      {/* BOTÓN MENÚ LATERAL */}
       <div className="absolute top-8 left-8 z-10">
         <Sheet>
           <SheetTrigger asChild>
@@ -383,7 +447,7 @@ export default function DashboardPage() {
         </Sheet>
       </div>
 
-      {/* BOTÓN ASISTENTE CAPO (TOP RIGHT) */}
+      {/* BOTÓN ASISTENTE CAPO */}
       <div className="absolute right-8 top-8 z-10">
         <Button size="icon" onClick={() => setIsAiAssistantOpen(true)} className="h-16 w-16 rounded-[1.5rem] shadow-2xl bg-blue-600 text-white border-none hover:bg-blue-700">
           <Sparkles className="h-8 w-8" />
@@ -438,7 +502,7 @@ export default function DashboardPage() {
               </div>
               <div className="space-y-4">
                 {driverActiveOrders?.map((order, i) => (
-                  <DriverOrderCard key={order.id} order={order} index={i} onOpenChat={() => { setSelectedChatOrderId(order.id); setSelectedChatAlertId(null); setActiveTab('central'); }} />
+                  <DriverOrderCardShort key={order.id} order={order} index={i} onOpenChat={() => { setSelectedChatOrderId(order.id); setSelectedChatAlertId(null); setActiveTab('central'); }} />
                 ))}
               </div>
             </div>
@@ -446,20 +510,27 @@ export default function DashboardPage() {
 
           {activeTab === 'pedidos' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-left">
-              <h2 className="text-3xl font-black tracking-tighter uppercase mb-6">Pedidos Disponibles</h2>
-              <div className="space-y-4">
-                {pendingOrders?.map(order => (
-                  <div key={order.id} className="p-6 bg-slate-50 rounded-[2.5rem] flex items-center justify-between hover:bg-slate-100 transition-all">
-                    <div className="text-left">
-                      <h4 className="font-black text-lg truncate">{order.deliveryAddress.split(',')[0]}</h4>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">{order.clientName}</p>
-                    </div>
-                    <div className="text-right">
-                       <p className="text-2xl font-black text-emerald-600">${order.offeredPrice || "250"}</p>
-                       <Button size="sm" variant="outline" onClick={() => handleAcceptOrder(order.id)} className="h-10 rounded-xl mt-2">ACEPTAR</Button>
-                    </div>
+              <div className="flex items-center gap-6 mb-10">
+                <div className="h-16 w-16 rounded-3xl bg-slate-900 flex items-center justify-center text-white shadow-2xl">
+                  <Boxes className="h-8 w-8" />
+                </div>
+                <div>
+                  <h2 className="text-4xl font-black tracking-tighter uppercase leading-none">Cerca Tuyo</h2>
+                  <p className="text-emerald-500 font-black text-[10px] uppercase tracking-[0.2em] mt-1">Oportunidades Live</p>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                {pendingOrders?.length === 0 ? (
+                  <div className="py-20 text-center bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200">
+                    <Package className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+                    <p className="text-slate-400 font-black uppercase text-xs tracking-widest">No hay pedidos disponibles</p>
                   </div>
-                ))}
+                ) : (
+                  pendingOrders?.map(order => (
+                    <PendingOrderCard key={order.id} order={order} onAccept={handleAcceptOrder} />
+                  ))
+                )}
               </div>
             </div>
           )}
