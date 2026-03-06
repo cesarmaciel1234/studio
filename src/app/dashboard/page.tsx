@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -36,7 +35,8 @@ import {
   Maximize,
   Sparkles,
   X,
-  User
+  User,
+  ArrowLeft
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -109,9 +109,6 @@ const CoroItem = ({ alert, userId, onOpenChat }: { alert: any, userId: string, o
                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
                  {alert.createdAt ? format(new Date(alert.createdAt), 'HH:mm') : 'AHORA'}
                </p>
-               {alert.authorId === userId && (
-                 <Badge variant="outline" className="ml-2 text-[8px] font-black border-slate-200 text-slate-400">TÚ</Badge>
-               )}
              </div>
              <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300">
                <MoreHorizontal className="w-4 h-4" />
@@ -245,7 +242,7 @@ export default function DashboardPage() {
   const [alertFilter, setAlertFilter] = useState<'all' | 'mine'>('all')
   const chatScrollRef = useRef<HTMLDivElement>(null)
 
-  // HOOKS DE FIREBASE MEMOIZADOS (FUERA DE CONDICIONALES)
+  // HOOKS DE FIREBASE MEMOIZADOS (TODOS AL INICIO PARA CUMPLIR RULES OF HOOKS)
   const userRef = useMemoFirebase(() => (!firestore || !user?.uid) ? null : doc(firestore, "users", user.uid), [user?.uid, firestore])
   const alertsQuery = useMemoFirebase(() => !firestore ? null : query(collection(firestore, "alerts"), orderBy("createdAt", "desc")), [firestore])
   const pendingOrdersQuery = useMemoFirebase(() => !firestore ? null : query(collection(firestore, "orders"), where("status", "==", "Pending")), [firestore])
@@ -264,7 +261,7 @@ export default function DashboardPage() {
   // DERIVADOS MEMOIZADOS
   const hasActiveSOS = useMemo(() => alerts?.some(a => a.type === 'sos') || false, [alerts])
   const activeOrder = useMemo(() => driverActiveOrders?.[0], [driverActiveOrders])
-  const sheetY = useMemo(() => isMapFullscreen ? 'calc(100% - 40px)' : (isExpanded ? '0' : 'calc(100% - 160px)'), [isMapFullscreen, isExpanded])
+  const isCentralLayout = useMemo(() => activeTab === 'central', [activeTab])
   
   const filteredAlerts = useMemo(() => {
     if (alertFilter === 'mine' && user?.uid) {
@@ -358,6 +355,88 @@ export default function DashboardPage() {
   if (isUserLoading || (user && isUserDataLoading)) return <div className="h-screen w-full flex items-center justify-center bg-slate-900 text-white"><Loader2 className="animate-spin" /></div>
   if (!user) return <LoginScreen />
 
+  // MODO CENTRAL: LAYOUT DE PANTALLA COMPLETA
+  if (isCentralLayout) {
+    return (
+      <div className="h-screen w-full bg-white flex flex-col animate-in fade-in duration-500">
+        <header className="p-8 flex items-center gap-6 border-b border-slate-100 bg-white sticky top-0 z-50">
+          <Button variant="ghost" size="icon" className="h-14 w-14 rounded-full bg-slate-50" onClick={() => setActiveTab('ruta')}>
+            <ArrowLeft className="h-7 w-7 text-slate-900" />
+          </Button>
+          <div className="flex-1">
+            <h1 className="text-5xl font-black tracking-tighter text-slate-900 leading-tight">Central</h1>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Historial Mensajes Privados</p>
+          </div>
+        </header>
+
+        <div className="flex-1 overflow-y-auto p-8 bg-slate-50/30">
+          {(selectedChatOrderId || selectedChatAlertId) ? (
+            <div className="h-full flex flex-col bg-white rounded-[3rem] shadow-xl border border-slate-100 overflow-hidden">
+               <header className="flex items-center gap-4 p-8 border-b border-slate-50 bg-white">
+                  <Button variant="ghost" size="icon" onClick={() => { setSelectedChatOrderId(null); setSelectedChatAlertId(null); }} className="rounded-full h-12 w-12 bg-slate-50"><ChevronLeft className="w-6 h-6" /></Button>
+                  <div>
+                    <h2 className="text-xl font-black tracking-tight uppercase">
+                      {selectedChatOrderId ? `Orden #${selectedChatOrderId.substring(0, 5)}` : `Reporte Comunidad`}
+                    </h2>
+                    <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">En línea</p>
+                  </div>
+                </header>
+                <div ref={chatScrollRef} className="flex-1 overflow-y-auto space-y-4 p-8 scrollbar-hide bg-slate-50/50">
+                  {(selectedChatOrderId ? orderChatMessages : alertChatMessages)?.map((msg) => (
+                    <div key={msg.id} className={cn("flex", msg.authorId === user.uid ? 'justify-end' : 'justify-start')}>
+                      <div className={cn("max-w-[75%] p-6 rounded-[2rem] text-sm shadow-sm", msg.authorId === user.uid ? 'bg-slate-900 text-white rounded-tr-none' : 'bg-white text-slate-800 rounded-tl-none border border-slate-100')}>
+                        {msg.authorName && msg.authorId !== user.uid && <p className="text-[10px] font-black mb-2 opacity-50 uppercase tracking-widest">{msg.authorName}</p>}
+                        <p className="font-medium leading-relaxed">{msg.content}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="p-8 border-t border-slate-50 bg-white">
+                  <div className="flex gap-4">
+                    <Input placeholder="Escribe un mensaje privado..." className="h-16 bg-slate-50 border-none rounded-full px-8 font-medium shadow-inner flex-1 text-base" value={chatMessageText} onChange={(e) => setChatMessageText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendChatMessage()} />
+                    <Button onClick={handleSendChatMessage} size="icon" className="h-16 w-16 rounded-full bg-slate-900 text-white shadow-2xl shrink-0"><Send className="w-6 h-6" /></Button>
+                  </div>
+                </div>
+            </div>
+          ) : (
+            <div className="max-w-4xl mx-auto space-y-6">
+               <div className="flex items-center gap-4 mb-8">
+                  <div className="h-14 w-14 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-xl">
+                    <MessageSquare className="h-7 w-7" />
+                  </div>
+                  <h3 className="text-2xl font-black uppercase tracking-tight">Conversaciones Activas</h3>
+               </div>
+               {driverActiveOrders?.map(order => (
+                  <div key={order.id} className="rounded-[40px] bg-white border border-slate-100 p-8 flex items-center justify-between hover:shadow-2xl hover:scale-[1.02] transition-all cursor-pointer group" onClick={() => { setSelectedChatOrderId(order.id); setSelectedChatAlertId(null); }}>
+                    <div className="flex items-center gap-6">
+                      <div className="w-20 h-20 rounded-[32px] bg-slate-50 flex items-center justify-center border border-slate-100 group-hover:bg-slate-900 transition-colors">
+                        <MessageSquare className="w-8 h-8 text-slate-900 group-hover:text-white transition-colors" />
+                      </div>
+                      <div className="text-left">
+                        <h4 className="font-black text-slate-900 text-xl uppercase tracking-tighter">ORDEN #{order.id.substring(0, 5)}</h4>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="secondary" className="bg-slate-100 text-slate-500 font-black text-[9px] uppercase tracking-widest px-3 py-1">PRIVADO</Badge>
+                          <span className="text-slate-200">•</span>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{order.status}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-8 h-8 text-slate-200 group-hover:text-slate-900 transition-colors" />
+                  </div>
+                ))}
+                {driverActiveOrders?.length === 0 && (
+                  <div className="py-32 text-center bg-white rounded-[4rem] border-4 border-dashed border-slate-100">
+                    <MessageSquare className="w-20 h-20 text-slate-100 mx-auto mb-6" />
+                    <p className="text-slate-400 font-black uppercase text-sm tracking-[0.2em]">No hay historial de mensajes privados</p>
+                  </div>
+                )}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="relative h-screen w-full overflow-hidden bg-slate-50">
       {/* MAP LAYER */}
@@ -418,7 +497,7 @@ export default function DashboardPage() {
                   </div>
                   <span className="text-md font-bold text-slate-700">Mis Alertas (Historial)</span>
                 </button>
-                <button onClick={() => { setActiveTab('central'); setIsExpanded(true); }} className="flex items-center gap-4 group w-full text-left">
+                <button onClick={() => { setActiveTab('central'); }} className="flex items-center gap-4 group w-full text-left">
                   <div className="h-11 w-11 rounded-[0.8rem] bg-slate-100 flex items-center justify-center shadow-sm">
                     <MessageSquare className="h-5 w-5 text-slate-900" />
                   </div>
@@ -431,7 +510,7 @@ export default function DashboardPage() {
         </Sheet>
       </div>
 
-      {/* ACTION STACK RESTAURADO */}
+      {/* RESTORED ACTION STACK (CONTROLES FLOTANTES) */}
       <div className="absolute top-8 right-8 z-10 flex flex-col gap-4 pointer-events-auto">
         <Button variant="secondary" size="icon" className="h-20 w-20 rounded-full shadow-2xl bg-[#1e293b] border-none text-slate-400 hover:text-white transition-all">
           <Compass className="h-8 w-8" />
@@ -472,7 +551,7 @@ export default function DashboardPage() {
       )}
 
       {/* SLIDING BOTTOM PANEL */}
-      <div className={cn("absolute inset-x-0 bottom-0 bg-white shadow-[0_-20px_50px_rgba(0,0,0,0.1)] rounded-t-[3.5rem] transition-all duration-500 ease-in-out z-20 overflow-hidden flex flex-col", sheetY === '0' ? "top-20" : sheetY === 'calc(100% - 40px)' ? "top-[calc(100%-40px)]" : "top-1/2")}>
+      <div className={cn("absolute inset-x-0 bottom-0 bg-white shadow-[0_-20px_50px_rgba(0,0,0,0.1)] rounded-t-[3.5rem] transition-all duration-500 ease-in-out z-20 overflow-hidden flex flex-col", isExpanded ? "top-20" : "top-1/2")}>
         <div className="h-12 w-full flex items-center justify-center cursor-pointer active:bg-slate-50" onClick={() => setIsExpanded(!isExpanded)}>
           <div className={cn("w-16 h-1.5 rounded-full mb-8", hasActiveSOS ? "bg-red-600 animate-pulse" : "bg-slate-200")}></div>
         </div>
@@ -483,7 +562,6 @@ export default function DashboardPage() {
             <div className="bg-slate-50 p-2 rounded-[2.5rem] flex items-center gap-2 shadow-inner border border-slate-100">
               <Button variant="ghost" size="icon" onClick={() => setActiveTab("ruta")} className={cn("h-16 w-16 rounded-[1.8rem]", activeTab === "ruta" ? "bg-slate-900 text-white" : "text-slate-400")}><Truck className="h-7 w-7" /></Button>
               <Button variant="ghost" size="icon" onClick={() => setActiveTab("pedidos")} className={cn("h-16 w-16 rounded-[1.8rem]", activeTab === "pedidos" ? "bg-slate-900 text-white" : "text-slate-400")}><Layers className="h-7 w-7" /></Button>
-              <Button variant="ghost" size="icon" onClick={() => setActiveTab("central")} className={cn("h-16 w-16 rounded-[1.8rem]", activeTab === "central" ? "bg-slate-900 text-white" : "text-slate-400")}><MessageSquare className="h-7 w-7" /></Button>
               <Button variant="ghost" size="icon" onClick={() => setActiveTab("alerta")} className={cn("h-16 w-16 rounded-[1.8rem]", activeTab === "alerta" ? "bg-slate-900 text-white" : "text-slate-400")}><ShieldAlert className="h-7 w-7" /></Button>
             </div>
           </div>
@@ -650,65 +728,6 @@ export default function DashboardPage() {
                 )}
               </div>
             </div>
-          )}
-
-          {/* TAB CONTENT: CENTRAL (CHAT PRIVADO EMPRESA-REPARTIDOR) */}
-          {activeTab === 'central' && (
-             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-left h-full flex flex-col min-h-[500px]">
-                {(selectedChatOrderId || selectedChatAlertId) ? (
-                  <div className="flex flex-col h-full bg-slate-100 rounded-[40px] p-4">
-                    <header className="flex items-center gap-4 mb-6 sticky top-0 bg-white p-4 rounded-2xl shadow-sm z-10">
-                      <Button variant="ghost" size="icon" onClick={() => { setSelectedChatOrderId(null); setSelectedChatAlertId(null); }} className="rounded-full h-10 w-10"><ChevronLeft className="w-6 h-6" /></Button>
-                      <h2 className="text-[14px] font-black tracking-tight uppercase truncate">
-                        {selectedChatOrderId ? `Empresa • Orden #${selectedChatOrderId.substring(0, 5)}` : `Comunidad • Reporte`}
-                      </h2>
-                    </header>
-                    <div ref={chatScrollRef} className="flex-1 overflow-y-auto space-y-3 px-2 scrollbar-hide mb-4 min-h-[300px]">
-                      {(selectedChatOrderId ? orderChatMessages : alertChatMessages)?.map((msg) => (
-                        <div key={msg.id} className={cn("flex", msg.authorId === user.uid ? 'justify-end' : 'justify-start')}>
-                          <div className={cn("max-w-[85%] p-4 rounded-[22px] text-[13px] shadow-sm", msg.authorId === user.uid ? 'bg-slate-900 text-white rounded-tr-none' : 'bg-white text-slate-800 rounded-tl-none')}>
-                            {msg.authorName && msg.authorId !== user.uid && <p className="text-[10px] font-black mb-1 opacity-50">{msg.authorName}</p>}
-                            <p className="font-medium leading-relaxed">{msg.content}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex gap-2 pt-4 items-center">
-                      <Input placeholder="Escribe un mensaje..." className="h-14 bg-white border-none rounded-full px-6 font-medium shadow-lg flex-1 text-sm" value={chatMessageText} onChange={(e) => setChatMessageText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendChatMessage()} />
-                      <Button onClick={handleSendChatMessage} size="icon" className="h-14 w-14 rounded-full bg-emerald-500 text-white shadow-xl shrink-0"><Send className="w-5 h-5" /></Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <h2 className="text-5xl font-black tracking-tighter text-slate-900 leading-tight mb-2">Central</h2>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-12">HISTORIAL MENSAJES PRIVADOS</p>
-                    
-                    <div className="space-y-4">
-                      {driverActiveOrders?.map(order => (
-                        <div key={order.id} className="rounded-[40px] bg-slate-50/50 border border-slate-100/50 p-6 flex items-center justify-between hover:bg-white hover:shadow-xl hover:shadow-slate-200/50 transition-all cursor-pointer group" onClick={() => { setSelectedChatOrderId(order.id); setSelectedChatAlertId(null); }}>
-                          <div className="flex items-center gap-6">
-                            <div className="w-16 h-16 rounded-[24px] bg-white flex items-center justify-center shadow-sm border border-slate-100 group-hover:scale-110 transition-transform">
-                              <MessageSquare className="w-6 h-6 text-slate-900" />
-                            </div>
-                            <div className="text-left">
-                              <h4 className="font-black text-slate-900 text-base uppercase tracking-tight">ORDEN #{order.id.substring(0, 5)}</h4>
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">EMPRESA • {order.status.toUpperCase()}</p>
-                            </div>
-                          </div>
-                          <ChevronRight className="w-5 h-5 text-slate-200 group-hover:text-slate-900 transition-colors" />
-                        </div>
-                      ))}
-                      
-                      {driverActiveOrders?.length === 0 && (
-                        <div className="py-20 text-center bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200">
-                          <MessageSquare className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-                          <p className="text-slate-400 font-black uppercase text-xs tracking-widest">No hay historial de mensajes privados</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-             </div>
           )}
         </div>
       </div>
