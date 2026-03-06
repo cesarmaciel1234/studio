@@ -72,7 +72,7 @@ async function toWav(
   rate = 24000,
   sampleWidth = 2
 ): Promise<string> {
-  // CARGA DINÁMICA: Evita que NextJS intente resolver 'wav' en el cliente
+  // CARGA DINÁMICA: Evita que NextJS intente empaquetar 'wav' para el cliente
   const wav = require('wav');
   return new Promise((resolve, reject) => {
     const writer = new wav.Writer({

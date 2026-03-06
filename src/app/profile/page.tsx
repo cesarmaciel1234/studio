@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
@@ -22,32 +21,43 @@ export default function ProfilePage() {
   
   useEffect(() => { setMounted(true) }, [])
 
-  const userDocRef = useMemoFirebase(() => {
+  // CORRECCIÓN: Primero leemos el rol del usuario en la colección maestros 'users'
+  const userMasterRef = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null
-    return doc(firestore, "driverProfiles", user.uid)
+    return doc(firestore, "users", user.uid)
   }, [firestore, user?.uid])
-  const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
+  const { data: userMasterData, isLoading: isMasterLoading } = useDoc(userMasterRef)
+
+  const isAdmin = userMasterData?.role === 'Admin'
+
+  // Leemos el perfil específico según el rol
+  const profileRef = useMemoFirebase(() => {
+    if (!firestore || !user?.uid || isMasterLoading) return null
+    const collectionName = isAdmin ? "companyProfiles" : "driverProfiles"
+    return doc(firestore, collectionName, user.uid)
+  }, [firestore, user?.uid, isAdmin, isMasterLoading])
+  const { data: userData, isLoading: isUserDataLoading } = useDoc(profileRef)
 
   const driverOrdersQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null
-    return query(collection(firestore, "orders"), where("driverId", "==", user.uid))
-  }, [firestore, user?.uid])
-  const { data: driverOrders } = useCollection(driverOrdersQuery)
+    return query(collection(firestore, "orders"), where(isAdmin ? "companyId" : "driverId", "==", user.uid))
+  }, [firestore, user?.uid, isAdmin])
+  const { data: orders } = useCollection(driverOrdersQuery)
 
-  const alertsQuery = useMemoFirebase(() => {
+  const activeAlertsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null
     return query(collection(firestore, "alerts"), orderBy("updatedAt", "desc"), limit(10))
   }, [firestore, user])
-  const { data: activeAlerts } = useCollection(alertsQuery)
+  const { data: activeAlerts } = useCollection(activeAlertsQuery)
 
   const stats = useMemo(() => {
-    if (!driverOrders) return { balance: 0, count: 0 }
-    const delivered = driverOrders.filter(o => o.status === 'Delivered')
+    if (!orders) return { balance: 0, count: 0 }
+    const delivered = orders.filter(o => o.status === 'Delivered')
     const balance = delivered.reduce((acc, o) => acc + (Number(o.offeredPrice) || 0), 0)
     return { balance, count: delivered.length }
-  }, [driverOrders])
+  }, [orders])
 
-  if (!mounted || isAuthLoading || (user && isUserDataLoading)) return <div className="h-screen flex items-center justify-center bg-white"><Loader2 className="w-8 h-8 animate-spin text-primary opacity-20" /></div>
+  if (!mounted || isAuthLoading || isMasterLoading || (user && isUserDataLoading)) return <div className="h-screen flex items-center justify-center bg-white"><Loader2 className="w-8 h-8 animate-spin text-primary opacity-20" /></div>
 
   return (
     <div className="h-full overflow-y-auto scrollbar-hide bg-slate-50">
@@ -56,7 +66,9 @@ export default function ProfilePage() {
           <Link href="/"><Button variant="outline" size="icon" className="h-14 w-14 rounded-[22px] bg-white border-none shadow-sm shrink-0"><Home className="w-6 h-6 text-slate-600" /></Button></Link>
           <div className="flex-1 bg-slate-200/50 p-1.5 rounded-[24px] flex items-center shadow-inner relative h-14">
             <div className="absolute inset-y-1.5 w-[calc(100%-12px)] rounded-[20px] shadow-sm bg-white"></div>
-            <button className="flex-1 z-10 text-[10px] font-black uppercase text-center text-slate-900 tracking-widest">REPARTIDOR PRO</button>
+            <button className="flex-1 z-10 text-[10px] font-black uppercase text-center text-slate-900 tracking-widest">
+              {isAdmin ? "PANEL CONTROL" : "REPARTIDOR PRO"}
+            </button>
           </div>
         </div>
 
@@ -64,12 +76,12 @@ export default function ProfilePage() {
           <div className="relative">
             <Avatar className="w-28 h-28 border-4 border-white shadow-2xl">
               <AvatarImage src={user?.photoURL || ""} />
-              <AvatarFallback className="text-2xl font-black bg-slate-100">{userData?.firstName?.substring(0,2) || "UR"}</AvatarFallback>
+              <AvatarFallback className="text-2xl font-black bg-slate-100">{userMasterData?.firstName?.substring(0,2) || "UR"}</AvatarFallback>
             </Avatar>
             <div className="absolute bottom-1 right-1 bg-emerald-500 p-2 rounded-full border-4 border-white shadow-lg"><ShieldCheck className="w-4 h-4 text-white" /></div>
           </div>
           <div className="text-center">
-            <h1 className="text-2xl font-black text-slate-900">{userData?.firstName || "Usuario"}</h1>
+            <h1 className="text-2xl font-black text-slate-900">{userMasterData?.firstName || "Usuario"}</h1>
             <div className="flex items-center justify-center gap-1 mt-1">
               <Star className="w-3 h-3 text-amber-500 fill-current" />
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Categoría Gold • {stats.count} Entregas</p>
