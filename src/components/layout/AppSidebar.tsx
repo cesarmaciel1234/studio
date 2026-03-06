@@ -32,37 +32,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
-const navItems = [
-  { 
-    name: "Mi billetera", 
-    href: "/wallet", 
-    icon: CreditCard, 
-    color: "text-emerald-500", 
-    bg: "bg-emerald-50" 
-  },
-  { 
-    name: "Pedidos: Propios y entregados", 
-    href: "/dashboard", 
-    icon: Package, 
-    color: "text-blue-500", 
-    bg: "bg-blue-50" 
-  },
-  { 
-    name: "Alerta Comunidad", 
-    href: "/dashboard", 
-    icon: ShieldAlert, 
-    color: "text-red-500", 
-    bg: "bg-red-50" 
-  },
-  { 
-    name: "Central: Historial Mensajes", 
-    href: "/dashboard", 
-    icon: MessageSquare, 
-    color: "text-slate-900", 
-    bg: "bg-slate-100" 
-  },
-]
-
 export function AppSidebar() {
   const pathname = usePathname()
   const { toggleSidebar } = useSidebar()
@@ -123,24 +92,46 @@ export function AppSidebar() {
 
       <SidebarContent className="px-6 space-y-2">
         <SidebarMenu className="gap-3">
-          {navItems.map((item) => (
-            <SidebarMenuItem key={item.name}>
-              <SidebarMenuButton 
-                asChild 
-                className="h-auto p-0 hover:bg-transparent"
-              >
-                <Link href={item.href} className="flex items-center gap-4 group">
-                  <div className={cn(
-                    "h-11 w-11 rounded-[0.8rem] flex items-center justify-center transition-transform group-active:scale-95 shadow-sm",
-                    item.bg
-                  )}>
-                    <item.icon className={cn("h-5 w-5", item.color)} />
-                  </div>
-                  <span className="text-md font-bold text-slate-700 leading-tight">{item.name}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild className="h-auto p-0 hover:bg-transparent">
+              <Link href="/wallet" className="flex items-center gap-4 group">
+                <div className="h-11 w-11 rounded-[0.8rem] bg-emerald-50 flex items-center justify-center shadow-sm">
+                  <CreditCard className="h-5 w-5 text-emerald-500" />
+                </div>
+                <span className="text-md font-bold text-slate-700">Mi billetera</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild className="h-auto p-0 hover:bg-transparent">
+              <Link href="/dashboard" className="flex items-center gap-4 group">
+                <div className="h-11 w-11 rounded-[0.8rem] bg-blue-50 flex items-center justify-center shadow-sm">
+                  <Package className="h-5 w-5 text-blue-500" />
+                </div>
+                <span className="text-md font-bold text-slate-700">Pedidos: Propios y entregados</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild className="h-auto p-0 hover:bg-transparent">
+              <Link href="/dashboard?tab=alerta&filter=mine" className="flex items-center gap-4 group">
+                <div className="h-11 w-11 rounded-[0.8rem] bg-red-50 flex items-center justify-center shadow-sm">
+                  <ShieldAlert className="h-5 w-5 text-red-500" />
+                </div>
+                <span className="text-md font-bold text-slate-700">Mis Alertas (Historial)</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild className="h-auto p-0 hover:bg-transparent">
+              <Link href="/dashboard?tab=central" className="flex items-center gap-4 group">
+                <div className="h-11 w-11 rounded-[0.8rem] bg-slate-100 flex items-center justify-center shadow-sm">
+                  <MessageSquare className="h-5 w-5 text-slate-900" />
+                </div>
+                <span className="text-md font-bold text-slate-700">Central: Historial Mensajes</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarContent>
 

@@ -4,7 +4,7 @@
 import * as React from "react"
 import { useState, useMemo, useCallback, useEffect, useRef } from "react"
 import dynamic from "next/dynamic"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { 
   Navigation, 
   Truck,
@@ -35,7 +35,8 @@ import {
   Target,
   Maximize,
   Sparkles,
-  X
+  X,
+  User
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -108,6 +109,9 @@ const CoroItem = ({ alert, userId, onOpenChat }: { alert: any, userId: string, o
                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
                  {alert.createdAt ? format(new Date(alert.createdAt), 'HH:mm') : 'AHORA'}
                </p>
+               {alert.authorId === userId && (
+                 <Badge variant="outline" className="ml-2 text-[8px] font-black border-slate-200 text-slate-400">TÚ</Badge>
+               )}
              </div>
              <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300">
                <MoreHorizontal className="w-4 h-4" />
@@ -123,7 +127,7 @@ const CoroItem = ({ alert, userId, onOpenChat }: { alert: any, userId: string, o
             </button>
             <button onClick={() => onOpenChat(alert.id)} className="flex items-center gap-1.5 text-slate-400 hover:text-blue-500 transition-colors">
               <MessageSquare className="w-4 h-4" />
-              <span className="text-[10px] font-black">CHAT</span>
+              <span className="text-[10px] font-black">COMENTAR</span>
             </button>
           </div>
         </div>
@@ -217,12 +221,12 @@ const LoginScreen = () => (
 )
 
 export default function DashboardPage() {
+  // --- HOOKS DE REACT (SIEMPRE AL INICIO) ---
   const router = useRouter()
   const { firestore, auth } = useFirebase()
   const { user, isUserLoading } = useUser()
   const { toast } = useToast()
 
-  // --- HOOKS DE ESTADO (SIEMPRE AL INICIO) ---
   const [activeTab, setActiveTab] = useState('ruta')
   const [isExpanded, setIsExpanded] = useState(false)
   const [isMapFullscreen, setIsMapFullscreen] = useState(false)
@@ -238,6 +242,7 @@ export default function DashboardPage() {
   const [selectedChatOrderId, setSelectedChatOrderId] = useState<string | null>(null)
   const [selectedChatAlertId, setSelectedChatAlertId] = useState<string | null>(null)
   const [chatMessageText, setChatMessageText] = useState("")
+  const [alertFilter, setAlertFilter] = useState<'all' | 'mine'>('all')
   const chatScrollRef = useRef<HTMLDivElement>(null)
 
   // --- HOOKS DE FIREBASE (MEMOIZACIÓN) ---
@@ -260,6 +265,13 @@ export default function DashboardPage() {
   const hasActiveSOS = useMemo(() => alerts?.some(a => a.type === 'sos') || false, [alerts])
   const activeOrder = useMemo(() => driverActiveOrders?.[0], [driverActiveOrders])
   const sheetY = useMemo(() => isMapFullscreen ? 'calc(100% - 40px)' : (isExpanded ? '0' : 'calc(100% - 160px)'), [isMapFullscreen, isExpanded])
+  
+  const filteredAlerts = useMemo(() => {
+    if (alertFilter === 'mine' && user?.uid) {
+      return alerts?.filter(a => a.authorId === user.uid) || []
+    }
+    return alerts || []
+  }, [alerts, alertFilter, user?.uid])
 
   // --- EFECTOS ---
   useEffect(() => {
@@ -339,7 +351,7 @@ export default function DashboardPage() {
     toast({ title: "Pedido Asignado Correctamente" })
   }, [user?.uid, firestore, toast])
 
-  // --- RETORNOS TEMPRANOS ---
+  // --- RETORNOS TEMPRANOS (DESPUÉS DE TODOS LOS HOOKS) ---
   if (!mounted) return null
   if (isUserLoading || (user && isUserDataLoading)) return <div className="h-screen w-full flex items-center justify-center bg-slate-900 text-white"><Loader2 className="animate-spin" /></div>
   if (!user) return <LoginScreen />
@@ -398,11 +410,11 @@ export default function DashboardPage() {
                   </div>
                   <span className="text-md font-bold text-slate-700">Pedidos</span>
                 </button>
-                <button onClick={() => { setActiveTab('alerta'); setIsExpanded(true); }} className="flex items-center gap-4 group w-full text-left">
+                <button onClick={() => { setActiveTab('alerta'); setIsExpanded(true); setAlertFilter('mine'); }} className="flex items-center gap-4 group w-full text-left">
                   <div className="h-11 w-11 rounded-[0.8rem] bg-red-50 flex items-center justify-center shadow-sm">
                     <ShieldAlert className="h-5 w-5 text-red-500" />
                   </div>
-                  <span className="text-md font-bold text-slate-700">Alerta Comunidad</span>
+                  <span className="text-md font-bold text-slate-700">Mis Alertas (Historial)</span>
                 </button>
                 <button onClick={() => { setActiveTab('central'); setIsExpanded(true); }} className="flex items-center gap-4 group w-full text-left">
                   <div className="h-11 w-11 rounded-[0.8rem] bg-slate-100 flex items-center justify-center shadow-sm">
@@ -588,6 +600,10 @@ export default function DashboardPage() {
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-left">
               <header className="flex items-center justify-between mb-10">
                 <h2 className="text-3xl font-black tracking-tighter uppercase">Coro Driver</h2>
+                <div className="flex bg-slate-100 p-1 rounded-2xl">
+                  <button onClick={() => setAlertFilter('all')} className={cn("px-4 py-2 rounded-xl text-[10px] font-black transition-all", alertFilter === 'all' ? "bg-white shadow-sm" : "text-slate-400")}>TODAS</button>
+                  <button onClick={() => setAlertFilter('mine')} className={cn("px-4 py-2 rounded-xl text-[10px] font-black transition-all", alertFilter === 'mine' ? "bg-white shadow-sm" : "text-slate-400")}>MIS REPORTES</button>
+                </div>
               </header>
               
               <div className="flex gap-4 mb-12 overflow-x-auto pb-4 scrollbar-hide">
@@ -624,9 +640,16 @@ export default function DashboardPage() {
                 ))}
               </div>
               <div className="space-y-4">
-                {alerts?.map((alert) => (
-                  <CoroItem key={alert.id} alert={alert} userId={user.uid} onOpenChat={(id) => { setSelectedChatAlertId(id); setSelectedChatOrderId(null); setActiveTab('central'); }} />
-                ))}
+                {filteredAlerts?.length === 0 ? (
+                  <div className="py-20 text-center bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200">
+                    <ShieldAlert className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+                    <p className="text-slate-400 font-black uppercase text-xs tracking-widest">No hay reportes que mostrar</p>
+                  </div>
+                ) : (
+                  filteredAlerts?.map((alert) => (
+                    <CoroItem key={alert.id} alert={alert} userId={user.uid} onOpenChat={(id) => { setSelectedChatAlertId(id); setSelectedChatOrderId(null); setActiveTab('central'); }} />
+                  ))
+                )}
               </div>
             </div>
           )}
@@ -639,7 +662,7 @@ export default function DashboardPage() {
                     <header className="flex items-center gap-4 mb-6 sticky top-0 bg-white p-4 rounded-2xl shadow-sm z-10">
                       <Button variant="ghost" size="icon" onClick={() => { setSelectedChatOrderId(null); setSelectedChatAlertId(null); }} className="rounded-full h-10 w-10"><ChevronLeft className="w-6 h-6" /></Button>
                       <h2 className="text-[14px] font-black tracking-tight uppercase truncate">
-                        {selectedChatOrderId ? `Chat Orden #${selectedChatOrderId.substring(0, 5)}` : `Chat Alerta Comunidad`}
+                        {selectedChatOrderId ? `Chat Orden #${selectedChatOrderId.substring(0, 5)}` : `Comentarios Alerta`}
                       </h2>
                     </header>
                     <div ref={chatScrollRef} className="flex-1 overflow-y-auto space-y-3 px-2 scrollbar-hide mb-4 min-h-[300px]">
@@ -653,7 +676,7 @@ export default function DashboardPage() {
                       ))}
                     </div>
                     <div className="flex gap-2 pt-4 items-center">
-                      <Input placeholder="Escribe un mensaje..." className="h-14 bg-white border-none rounded-full px-6 font-medium shadow-lg flex-1 text-sm" value={chatMessageText} onChange={(e) => setChatMessageText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendChatMessage()} />
+                      <Input placeholder="Escribe un comentario..." className="h-14 bg-white border-none rounded-full px-6 font-medium shadow-lg flex-1 text-sm" value={chatMessageText} onChange={(e) => setChatMessageText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendChatMessage()} />
                       <Button onClick={handleSendChatMessage} size="icon" className="h-14 w-14 rounded-full bg-emerald-500 text-white shadow-xl shrink-0"><Send className="w-5 h-5" /></Button>
                     </div>
                   </div>
