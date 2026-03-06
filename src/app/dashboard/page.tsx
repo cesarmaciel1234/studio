@@ -294,6 +294,9 @@ export default function DashboardPage() {
     }
   }, [activeOrder, isNavigating])
 
+  /**
+   * REGLA DE HOOKS: Todos los hooks (incluyendo useMemo) deben estar por encima de los retornos tempranos.
+   */
   const hasActiveSOS = useMemo(() => alerts?.some(a => a.type === 'sos') || false, [alerts])
 
   /**
