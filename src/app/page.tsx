@@ -83,7 +83,7 @@ export default function DashboardPage() {
           }, { merge: true })
         },
         (error) => {
-          console.warn("GPS Tracking Status:", error.message || "Ubicación no disponible");
+          console.warn("GPS Status:", error.message || "Buscando señal...");
         },
         { enableHighAccuracy: true, maximumAge: 10000, timeout: 30000 }
       )

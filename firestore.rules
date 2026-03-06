@@ -2,13 +2,13 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // REGLA GLOBAL: Permite acceso total para prototipado rápido.
-    // Esto asegura que el seguimiento GPS, perfiles, pedidos y alertas funcionen sin bloqueos.
+    // REGLA GLOBAL DE DESARROLLO: Permite acceso total de lectura y escritura.
+    // Esto garantiza que el seguimiento GPS, perfiles, pedidos y alertas funcionen sin bloqueos de permisos.
     match /{document=**} {
       allow read, write: if true;
     }
-
-    // REGLAS EXPLÍCITAS: Refuerzan el acceso a colecciones críticas para el sistema de logística.
+    
+    // Reglas explícitas para mayor claridad en el motor de Firebase
     match /users/{userId} {
       allow read, write: if true;
     }
@@ -22,12 +22,6 @@ service cloud.firestore {
       allow read, write: if true;
     }
     match /alerts/{alertId} {
-      allow read, write: if true;
-    }
-    match /alerts/{alertId}/comments/{commentId} {
-      allow read, write: if true;
-    }
-    match /orders/{orderId}/messages/{messageId} {
       allow read, write: if true;
     }
   }
