@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -178,7 +179,7 @@ const LoginScreen = () => (
 )
 
 export default function DashboardPage() {
-  // --- 1. HOOKS PRIMERO ---
+  // --- CRÍTICO: HOOKS SIEMPRE AL PRINCIPIO ---
   const router = useRouter()
   const { firestore, auth } = useFirebase()
   const { user, isUserLoading } = useUser()
@@ -201,7 +202,7 @@ export default function DashboardPage() {
   const [chatMessageText, setChatMessageText] = useState("")
   const chatScrollRef = useRef<HTMLDivElement>(null)
 
-  // Firebase Data Queries (Memoized)
+  // Consultas a Firebase (Memoizadas para evitar bucles de renderizado)
   const userRef = useMemoFirebase(() => (!firestore || !user?.uid) ? null : doc(firestore, "users", user.uid), [user?.uid, firestore])
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userRef)
   
@@ -222,6 +223,7 @@ export default function DashboardPage() {
 
   const hasActiveSOS = useMemo(() => alerts?.some(a => a.type === 'sos') || false, [alerts])
   const activeOrder = useMemo(() => driverActiveOrders?.[0], [driverActiveOrders])
+  const sheetY = useMemo(() => isMapFullscreen ? 'calc(100% - 40px)' : (isExpanded ? '0' : 'calc(100% - 160px)'), [isMapFullscreen, isExpanded])
 
   useEffect(() => {
     setMounted(true)
@@ -252,6 +254,13 @@ export default function DashboardPage() {
     }
   }, [selectedChatOrderId, selectedChatAlertId, chatMessageText])
 
+  /**
+   * FLUJO DE CORO DRIVER (ALERTA COMUNITARIA):
+   * 1. Activación: En el panel inferior (ícono ShieldAlert).
+   * 2. Selección: Se elige un tipo (Control, Tráfico, Peligro, Obras).
+   * 3. Diálogo: Abre DialogTrigger y guarda el estado en selectedAlertType.
+   * 4. Publicación: handlePublishAlert recopila descripción + GPS + ID y crea el doc en alerts.
+   */
   const handlePublishAlert = useCallback(() => {
     if (!selectedAlertType || !user?.uid || !firestore || !currentCoords) return
     addDocumentNonBlocking(collection(firestore, "alerts"), {
@@ -303,12 +312,10 @@ export default function DashboardPage() {
     toast({ title: "Pedido Asignado" })
   }, [user?.uid, firestore, toast])
 
-  // --- 2. RETORNOS CONDICIONALES ---
+  // --- RENDERS CONDICIONALES DESPUÉS DE LOS HOOKS ---
   if (!mounted) return null
   if (isUserLoading || (user && isUserDataLoading)) return <div className="h-screen w-full flex items-center justify-center bg-slate-900 text-white"><Loader2 className="animate-spin" /></div>
   if (!user) return <LoginScreen />
-
-  const sheetY = isMapFullscreen ? 'calc(100% - 40px)' : (isExpanded ? '0' : 'calc(100% - 160px)')
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-slate-50">
@@ -396,15 +403,6 @@ export default function DashboardPage() {
           {isMapFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
         </Button>
       </div>
-
-      {/* OVERLAY DE ASISTENTE CAPO */}
-      {isAiAssistantOpen && (
-        <div className="absolute inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-8 animate-in fade-in duration-300">
-          <div className="w-full max-w-2xl h-[80vh]">
-            <CapoAssistant onClose={() => setIsAiAssistantOpen(false)} />
-          </div>
-        </div>
-      )}
 
       {/* PANEL DESLIZABLE INFERIOR */}
       <div className={cn("absolute inset-x-0 bottom-0 bg-white shadow-[0_-20px_50px_rgba(0,0,0,0.1)] rounded-t-[3.5rem] transition-all duration-500 ease-in-out z-20 overflow-hidden flex flex-col", sheetY === '0' ? "top-20" : sheetY === 'calc(100% - 40px)' ? "top-[calc(100%-40px)]" : "top-1/2")}>
