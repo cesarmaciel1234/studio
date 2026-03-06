@@ -37,7 +37,10 @@ import {
   X,
   User,
   ArrowLeft,
-  LayoutDashboard
+  LayoutDashboard,
+  RefreshCcw,
+  ChevronUp,
+  ChevronDown
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -72,6 +75,7 @@ import { signOut } from "firebase/auth"
 import { useToast } from "@/hooks/use-toast"
 import { format } from "date-fns"
 import { CapoAssistant } from "@/components/dashboard/CapoAssistant"
+import { driverRouteOptimization, type DriverRouteOptimizationOutput } from "@/ai/flows/driver-route-optimization"
 
 // Dynamic import for the map to avoid SSR issues
 const InteractiveMap = dynamic(() => import('@/components/dashboard/InteractiveMap'), {
@@ -219,13 +223,14 @@ const LoginScreen = () => (
 )
 
 export default function DashboardPage() {
-  // --- RULES OF HOOKS: STICK TO THE TOP ---
+  // --- 1. HOOKS AT THE TOP (ABSOLUTE) ---
   const router = useRouter()
   const searchParams = useSearchParams()
   const { firestore, auth } = useFirebase()
   const { user, isUserLoading } = useUser()
   const { toast } = useToast()
 
+  // Component States
   const [activeTab, setActiveTab] = useState('ruta')
   const [isExpanded, setIsExpanded] = useState(false)
   const [isMapFullscreen, setIsMapFullscreen] = useState(false)
@@ -242,9 +247,11 @@ export default function DashboardPage() {
   const [selectedChatAlertId, setSelectedChatAlertId] = useState<string | null>(null)
   const [chatMessageText, setChatMessageText] = useState("")
   const [alertFilter, setAlertFilter] = useState<'all' | 'mine'>('all')
+  const [isOptimizing, setIsOptimizing] = useState(false)
+  const [optimizedRouteData, setOptimizedRouteData] = useState<DriverRouteOptimizationOutput | null>(null)
   const chatScrollRef = useRef<HTMLDivElement>(null)
 
-  // Firebase Refs (Memoized)
+  // Memoized Firebase Queries
   const userRef = useMemoFirebase(() => (!firestore || !user?.uid) ? null : doc(firestore, "users", user.uid), [user?.uid, firestore])
   const alertsQuery = useMemoFirebase(() => !firestore ? null : query(collection(firestore, "alerts"), orderBy("createdAt", "desc")), [firestore])
   const pendingOrdersQuery = useMemoFirebase(() => !firestore ? null : query(collection(firestore, "orders"), where("status", "==", "Pending")), [firestore])
@@ -253,7 +260,7 @@ export default function DashboardPage() {
   const orderChatMessagesQuery = useMemoFirebase(() => (!firestore || !selectedChatOrderId) ? null : query(collection(firestore, `orders/${selectedChatOrderId}/chatMessages`), orderBy("timestamp", "asc")), [selectedChatOrderId, firestore])
   const alertChatMessagesQuery = useMemoFirebase(() => (!firestore || !selectedChatAlertId) ? null : query(collection(firestore, `alerts/${selectedChatAlertId}/messages`), orderBy("timestamp", "asc")), [selectedChatAlertId, firestore])
 
-  // Data Fetching
+  // Real-time Data Listeners
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userRef)
   const { data: alerts } = useCollection(alertsQuery)
   const { data: pendingOrders } = useCollection(pendingOrdersQuery)
@@ -273,7 +280,7 @@ export default function DashboardPage() {
     return alerts || []
   }, [alerts, alertFilter, user?.uid])
 
-  // Effects
+  // --- 2. EFFECTS ---
   useEffect(() => {
     setMounted(true)
     const tab = searchParams.get('tab')
@@ -308,7 +315,7 @@ export default function DashboardPage() {
     }
   }, [selectedChatOrderId, selectedChatAlertId, orderChatMessages?.length, alertChatMessages?.length])
 
-  // Callbacks
+  // --- 3. CALLBACKS ---
   const handlePublishAlert = useCallback(() => {
     if (!selectedAlertType || !user?.uid || !firestore || !currentCoords) return
     addDocumentNonBlocking(collection(firestore, "alerts"), {
@@ -358,12 +365,43 @@ export default function DashboardPage() {
     toast({ title: "Pedido Asignado Correctamente" })
   }, [user?.uid, firestore, toast])
 
-  // --- CONDITIONAL RENDERS AFTER HOOKS ---
+  const handleOptimizeRoute = async () => {
+    if (!currentCoords) return
+    setIsOptimizing(true)
+    try {
+      const result = await driverRouteOptimization({
+        driverCurrentLocation: { latitude: currentCoords.lat, longitude: currentCoords.lng },
+        stops: [
+          { address: "Punto Central A", type: "pickup", orderId: "ORD-001" },
+          { address: "Calle Principal 450", type: "delivery", orderId: "ORD-001" },
+          { address: "Bodega Logística Sur", type: "pickup", orderId: "ORD-002" },
+          { address: "Avenida Industrial 2200", type: "delivery", orderId: "ORD-002" }
+        ],
+        currentTrafficConditions: "Tráfico moderado en el centro."
+      })
+      setOptimizedRouteData(result)
+      setIsExpanded(true)
+      toast({ title: "Ruta optimizada con IA", description: "Copo ha encontrado el camino más rápido." })
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: "No se pudo optimizar la ruta." })
+    } finally {
+      setIsOptimizing(false)
+    }
+  }
+
+  // --- 4. CONDITIONAL RENDERS ---
   if (!mounted) return null
-  if (isUserLoading || (user && isUserDataLoading)) return <div className="h-screen w-full flex items-center justify-center bg-slate-900 text-white"><Loader2 className="animate-spin" /></div>
+  if (isUserLoading || (user && isUserDataLoading)) {
+    return (
+      <div className="h-screen w-full flex flex-col items-center justify-center bg-slate-900 text-white gap-4">
+        <Loader2 className="w-12 h-12 animate-spin text-blue-500" />
+        <p className="font-black text-[10px] uppercase tracking-widest animate-pulse">Iniciando Sistemas Copo...</p>
+      </div>
+    )
+  }
   if (!user) return <LoginScreen />
 
-  // --- CENTRAL LAYOUT: PANTALLA COMPLETA HISTORIAL ---
+  // --- 5. CENTRAL FULLSCREEN LAYOUT ---
   if (isCentralLayout) {
     return (
       <div className="h-screen w-full bg-white flex flex-col animate-in fade-in duration-500 z-[100]">
@@ -386,7 +424,7 @@ export default function DashboardPage() {
                     <h2 className="text-xl font-black tracking-tight uppercase">
                       {selectedChatOrderId ? `Orden #${selectedChatOrderId.substring(0, 5)}` : `Reporte Comunidad`}
                     </h2>
-                    <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Chat Finalizado</p>
+                    <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Archivo Histórico</p>
                   </div>
                 </header>
                 <div ref={chatScrollRef} className="flex-1 overflow-y-auto space-y-4 p-8 scrollbar-hide bg-slate-50/50">
@@ -433,6 +471,7 @@ export default function DashboardPage() {
     )
   }
 
+  // --- 6. MAIN DASHBOARD UI ---
   return (
     <div className="relative h-screen w-full overflow-hidden bg-slate-50">
       {/* MAP LAYER */}
@@ -550,30 +589,30 @@ export default function DashboardPage() {
       <div className={cn("absolute inset-x-0 bottom-0 bg-white shadow-[0_-20px_50px_rgba(0,0,0,0.1)] rounded-t-[4rem] transition-all duration-500 ease-in-out z-20 overflow-hidden flex flex-col", isExpanded ? "top-20" : "top-1/2")}>
         
         {/* BARRA DE HERRAMIENTAS INTEGRADA EN LA CABECERA DEL PANEL */}
-        <div className="h-24 w-full flex flex-col items-center justify-center shrink-0 bg-white border-b border-slate-50">
+        <div className="h-28 w-full flex flex-col items-center justify-center shrink-0 bg-white border-b border-slate-50">
           {/* DRAG HANDLE */}
-          <div className="h-6 w-full flex items-center justify-center cursor-pointer active:bg-slate-50" onClick={() => setIsExpanded(!isExpanded)}>
-            <div className={cn("w-16 h-1.5 rounded-full", hasActiveSOS ? "bg-red-600 animate-pulse" : "bg-slate-200")}></div>
+          <div className="h-8 w-full flex items-center justify-center cursor-pointer active:bg-slate-50" onClick={() => setIsExpanded(!isExpanded)}>
+            <div className={cn("w-20 h-2 rounded-full", hasActiveSOS ? "bg-red-600 animate-pulse" : "bg-slate-200")}></div>
           </div>
           
-          <div className="bg-slate-900 p-1.5 rounded-[2.5rem] flex items-center gap-1 shadow-2xl pointer-events-auto scale-90 mb-2">
+          <div className="bg-slate-900 p-2 rounded-[2.5rem] flex items-center gap-1 shadow-2xl pointer-events-auto scale-90 mb-2">
             <Button 
               variant="ghost" 
               onClick={() => { setActiveTab("ruta"); setIsExpanded(false); }} 
               className={cn(
-                "h-11 flex items-center gap-3 px-6 transition-all duration-300", 
+                "h-12 flex items-center gap-3 px-8 transition-all duration-300", 
                 activeTab === "ruta" ? "bg-white text-slate-900 rounded-[1.8rem]" : "text-slate-400"
               )}
             >
               <Truck className="h-5 w-5" />
-              {activeTab === "ruta" && <span className="font-black text-[9px] uppercase tracking-widest">RUTA</span>}
+              {activeTab === "ruta" && <span className="font-black text-[10px] uppercase tracking-widest">RUTA</span>}
             </Button>
             
             <Button 
               variant="ghost" 
               onClick={() => { setActiveTab("pedidos"); setIsExpanded(false); }} 
               className={cn(
-                "h-11 w-11 rounded-full p-0 flex items-center justify-center transition-all duration-300", 
+                "h-12 w-12 rounded-full p-0 flex items-center justify-center transition-all duration-300", 
                 activeTab === "pedidos" ? "bg-white text-slate-900" : "text-slate-400"
               )}
             >
@@ -584,7 +623,7 @@ export default function DashboardPage() {
               variant="ghost" 
               onClick={() => { setActiveTab("central"); setIsExpanded(false); }} 
               className={cn(
-                "h-11 w-11 rounded-full p-0 flex items-center justify-center transition-all duration-300", 
+                "h-12 w-12 rounded-full p-0 flex items-center justify-center transition-all duration-300", 
                 activeTab === "central" ? "bg-white text-slate-900" : "text-slate-400"
               )}
             >
@@ -597,7 +636,7 @@ export default function DashboardPage() {
                 variant="ghost" 
                 onClick={() => { setActiveTab("chat"); setIsExpanded(false); }} 
                 className={cn(
-                  "h-11 w-11 rounded-full p-0 flex items-center justify-center transition-all duration-300", 
+                  "h-12 w-12 rounded-full p-0 flex items-center justify-center transition-all duration-300", 
                   activeTab === "chat" ? "bg-white text-slate-900" : "text-slate-400"
                 )}
               >
@@ -609,7 +648,7 @@ export default function DashboardPage() {
               variant="ghost" 
               onClick={() => { setActiveTab("alerta"); setIsExpanded(false); }} 
               className={cn(
-                "h-11 w-11 rounded-full p-0 flex items-center justify-center transition-all duration-300", 
+                "h-12 w-12 rounded-full p-0 flex items-center justify-center transition-all duration-300", 
                 activeTab === "alerta" ? "bg-white text-slate-900" : "text-slate-400"
               )}
             >
@@ -619,47 +658,92 @@ export default function DashboardPage() {
         </div>
         
         <div className="flex-1 overflow-y-auto px-8 pb-20 scrollbar-hide">
-          {/* TAB CONTENT: RUTA */}
+          {/* TAB CONTENT: RUTA (AI PLANNER) */}
           {activeTab === 'ruta' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-left pt-6">
-              <div className="bg-slate-900 rounded-[3rem] p-10 text-white shadow-2xl mb-12 relative overflow-hidden">
-                <div className="flex justify-between items-center mb-10">
-                  <h1 className="text-4xl font-black tracking-tighter">Mi Ruta Pro</h1>
-                  <Flame className="w-8 h-8 text-orange-500 fill-orange-500" />
-                </div>
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="bg-slate-800/50 rounded-[2.5rem] p-8 border border-slate-700/50 flex flex-col items-center">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">ESTADO</p>
-                    <span className="text-xl font-black uppercase text-emerald-400">Activo</span>
-                  </div>
-                  <div className="bg-slate-800/50 rounded-[2.5rem] p-8 border border-slate-700/50 flex flex-col items-center">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">PARADAS</p>
-                    <span className="text-4xl font-black">{activeOrder ? "1" : "0"}</span>
-                  </div>
-                </div>
-              </div>
-              {activeOrder ? (
-                <Card className="rounded-[3rem] border-none shadow-[0_30px_60px_rgba(0,0,0,0.08)] bg-white p-10 relative">
-                  <div className="flex wrap justify-between items-start mb-8">
-                    <div className="space-y-2">
-                      <Badge className="bg-orange-100 text-orange-600 border-none font-black text-[10px] py-1.5 px-4 rounded-full uppercase tracking-widest">
-                        RECOGER CARGA
-                      </Badge>
-                      <h2 className="text-3xl font-black text-slate-900 tracking-tight uppercase">
-                        {activeOrder.originName || "ORIGEN EMPRESA"}
-                      </h2>
+               <header className="flex justify-between items-start mb-10">
+                 <div>
+                   <h2 className="text-5xl font-black tracking-tighter text-slate-900 uppercase leading-tight">
+                     {optimizedRouteData ? "Tu Ruta IA" : "Plan de Carga"}
+                   </h2>
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
+                     {optimizedRouteData ? `${optimizedRouteData.totalEstimatedDuration} min • ${optimizedRouteData.totalEstimatedDistance} km` : "Optimización Logística Neuronal"}
+                   </p>
+                 </div>
+                 {!optimizedRouteData ? (
+                    <Button 
+                      onClick={handleOptimizeRoute} 
+                      disabled={isOptimizing}
+                      className="h-16 px-8 rounded-[2rem] bg-blue-600 hover:bg-blue-700 text-white font-black shadow-xl"
+                    >
+                      {isOptimizing ? <RefreshCcw className="w-5 h-5 animate-spin mr-3" /> : <Sparkles className="w-5 h-5 mr-3" />}
+                      {isOptimizing ? "CALCULANDO..." : "OPTIMIZAR"}
+                    </Button>
+                 ) : (
+                    <Button variant="ghost" size="icon" onClick={() => setOptimizedRouteData(null)} className="h-14 w-14 rounded-full bg-slate-50">
+                      <X className="w-6 h-6" />
+                    </Button>
+                 )}
+               </header>
+
+               {!optimizedRouteData ? (
+                 <div className="space-y-6">
+                    <div className="bg-slate-900 rounded-[3rem] p-10 text-white shadow-2xl flex items-center justify-between overflow-hidden relative">
+                       <div className="relative z-10">
+                         <h3 className="text-2xl font-black uppercase mb-2">Estado de Flota</h3>
+                         <p className="text-blue-400 font-bold text-xs uppercase tracking-widest">IA Conectada • CDMX</p>
+                       </div>
+                       <Zap className="w-20 h-20 text-blue-500/20 absolute -right-4 -bottom-4 rotate-12" />
                     </div>
-                  </div>
-                  <Button className="w-full h-20 rounded-[2.5rem] bg-orange-500 hover:bg-orange-600 text-white font-black text-lg tracking-tight shadow-2xl shadow-orange-500/30 uppercase">
-                    CONFIRMAR RECOJO
-                  </Button>
-                </Card>
-              ) : (
-                <div className="py-20 text-center bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200">
-                  <Package className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-                  <p className="text-slate-400 font-black uppercase text-xs tracking-widest">No tienes una ruta activa</p>
-                </div>
-              )}
+                    <div className="grid grid-cols-2 gap-4">
+                       <div className="bg-slate-50 border border-slate-100 rounded-[2.5rem] p-8">
+                          <Clock className="w-8 h-8 text-blue-600 mb-4" />
+                          <p className="font-black text-[10px] uppercase text-slate-400 tracking-widest mb-1">TRÁFICO</p>
+                          <p className="text-xl font-black text-slate-900">MODERADO</p>
+                       </div>
+                       <div className="bg-slate-50 border border-slate-100 rounded-[2.5rem] p-8">
+                          <Package className="w-8 h-8 text-emerald-600 mb-4" />
+                          <p className="font-black text-[10px] uppercase text-slate-400 tracking-widest mb-1">PARADAS</p>
+                          <p className="text-xl font-black text-slate-900">4 PENDIENTES</p>
+                       </div>
+                    </div>
+                 </div>
+               ) : (
+                 <div className="space-y-8 animate-in slide-in-from-bottom-6 duration-500 pb-20">
+                    <div className="bg-blue-50/50 border border-blue-100 rounded-[3rem] p-8 flex items-start gap-6">
+                       <div className="w-16 h-16 rounded-[2rem] bg-blue-600 flex items-center justify-center text-white shadow-xl shrink-0">
+                         <Navigation className="w-8 h-8" />
+                       </div>
+                       <div className="flex-1">
+                         <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1">PRÓXIMO DESTINO</p>
+                         <h4 className="text-2xl font-black text-slate-900 leading-tight uppercase">{optimizedRouteData.optimizedRoute[0].address}</h4>
+                       </div>
+                    </div>
+
+                    <div className="relative pl-12 space-y-12">
+                       <div className="absolute left-[23px] top-6 bottom-6 w-[2px] border-l-2 border-dashed border-slate-200" />
+                       {optimizedRouteData.optimizedRoute.map((stop, i) => (
+                         <div key={i} className="relative">
+                            <div className={cn(
+                              "absolute -left-[38px] top-0 w-11 h-11 rounded-full bg-white shadow-xl flex items-center justify-center border border-slate-100 z-10 font-black text-xs",
+                              i === 0 ? "bg-blue-600 text-white border-blue-600" : "text-slate-400"
+                            )}>
+                              {i + 1}
+                            </div>
+                            <div className="flex justify-between items-start">
+                               <div>
+                                 <h5 className="font-black text-lg text-slate-900 uppercase leading-none mb-1">{stop.address}</h5>
+                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                   {stop.type} • {new Date(stop.estimatedArrivalTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                 </p>
+                               </div>
+                               <Badge className="bg-slate-100 text-slate-500 border-none font-black text-[9px] px-3">ORD-{stop.orderId}</Badge>
+                            </div>
+                         </div>
+                       ))}
+                    </div>
+                 </div>
+               )}
             </div>
           )}
 
@@ -692,28 +776,28 @@ export default function DashboardPage() {
 
           {/* TAB CONTENT: CHAT EN TIEMPO REAL (SOLO PEDIDO ACTIVO) */}
           {activeTab === 'chat' && activeOrder && (
-             <div className="h-[500px] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-500 text-left pt-6">
+             <div className="h-[550px] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-500 text-left pt-6 pb-4">
                 <header className="flex items-center gap-4 mb-6">
-                  <div className="h-12 w-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg">
-                    <MessageSquare className="h-6 h-6" />
+                  <div className="h-14 w-14 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg">
+                    <MessageSquare className="h-7 w-7" />
                   </div>
                   <div>
                     <h2 className="text-2xl font-black uppercase tracking-tight">Chat Empresa</h2>
-                    <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Orden #{activeOrder.id.substring(0, 5)}</p>
+                    <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Orden #{activeOrder.id.substring(0, 5)} • TIEMPO REAL</p>
                   </div>
                 </header>
-                <div ref={chatScrollRef} className="flex-1 overflow-y-auto space-y-4 p-4 scrollbar-hide bg-slate-50 rounded-[2rem] border border-slate-100 mb-6">
+                <div ref={chatScrollRef} className="flex-1 overflow-y-auto space-y-4 p-6 scrollbar-hide bg-slate-50/50 rounded-[3rem] border border-slate-100 mb-6">
                   {orderChatMessages?.map((msg) => (
                     <div key={msg.id} className={cn("flex", msg.authorId === user.uid ? 'justify-end' : 'justify-start')}>
-                      <div className={cn("max-w-[85%] p-4 rounded-[1.5rem] text-sm shadow-sm", msg.authorId === user.uid ? 'bg-slate-900 text-white rounded-tr-none' : 'bg-white text-slate-800 rounded-tl-none border border-slate-100')}>
+                      <div className={cn("max-w-[85%] p-5 rounded-[2rem] text-sm shadow-sm", msg.authorId === user.uid ? 'bg-slate-900 text-white rounded-tr-none' : 'bg-white text-slate-800 rounded-tl-none border border-slate-100')}>
                         <p className="font-medium leading-relaxed">{msg.content}</p>
                       </div>
                     </div>
                   ))}
                 </div>
-                <div className="flex gap-3">
-                  <Input placeholder="Mensaje en tiempo real..." className="h-14 bg-white border-none rounded-full px-6 font-medium shadow-inner flex-1" value={chatMessageText} onChange={(e) => setChatMessageText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendChatMessage()} />
-                  <Button onClick={handleSendChatMessage} size="icon" className="h-14 w-14 rounded-full bg-blue-600 text-white shadow-xl shrink-0"><Send className="w-5 h-5" /></Button>
+                <div className="flex gap-4">
+                  <Input placeholder="Mensaje para la empresa..." className="h-16 bg-white border-none rounded-full px-8 font-medium shadow-inner flex-1" value={chatMessageText} onChange={(e) => setChatMessageText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendChatMessage()} />
+                  <Button onClick={handleSendChatMessage} size="icon" className="h-16 w-16 rounded-full bg-blue-600 text-white shadow-xl shrink-0"><Send className="w-6 h-6" /></Button>
                 </div>
              </div>
           )}
