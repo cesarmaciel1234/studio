@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -12,7 +13,8 @@ import {
   Building2,
   X,
   Pencil,
-  MessageSquare
+  MessageSquare,
+  ShieldAlert
 } from "lucide-react"
 
 import {
@@ -38,25 +40,25 @@ const navItems = [
     bg: "bg-emerald-50" 
   },
   { 
-    name: "Pedidos: Pendientes y entregados", 
+    name: "Pedidos: Propios y entregados", 
     href: "/orders", 
     icon: ShoppingBag, 
     color: "text-blue-500", 
     bg: "bg-blue-50" 
   },
   { 
-    name: "Mensajes comunidad", 
-    href: "/messages", 
-    icon: Users, 
-    color: "text-purple-500", 
-    bg: "bg-purple-50" 
+    name: "Alerta Comunidad", 
+    href: "/dashboard", 
+    icon: ShieldAlert, 
+    color: "text-red-500", 
+    bg: "bg-red-50" 
   },
   { 
-    name: "Mensajes con la comunidad", 
-    href: "/messages/history", 
+    name: "Central: Historial Mensajes", 
+    href: "/dashboard", 
     icon: MessageSquare, 
-    color: "text-orange-500", 
-    bg: "bg-orange-50" 
+    color: "text-slate-900", 
+    bg: "bg-slate-100" 
   },
 ]
 

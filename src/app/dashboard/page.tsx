@@ -207,6 +207,7 @@ export default function DashboardPage() {
   const { user, isUserLoading } = useUser()
   const { toast } = useToast()
 
+  // ALL HOOKS MUST BE AT THE TOP
   const [activeTab, setActiveTab] = useState('ruta')
   const [isExpanded, setIsExpanded] = useState(false)
   const [isMapFullscreen, setIsMapFullscreen] = useState(false)
@@ -224,7 +225,7 @@ export default function DashboardPage() {
   const [chatMessageText, setChatMessageText] = useState("")
   const chatScrollRef = useRef<HTMLDivElement>(null)
 
-  // Memoización de Consultas (HOOKS SIEMPRE AL INICIO)
+  // Memoización de Consultas (HOOKS)
   const userRef = useMemoFirebase(() => (!firestore || !user?.uid) ? null : doc(firestore, "users", user.uid), [user?.uid, firestore])
   const alertsQuery = useMemoFirebase(() => !firestore ? null : query(collection(firestore, "alerts"), orderBy("createdAt", "desc")), [firestore])
   const pendingOrdersQuery = useMemoFirebase(() => !firestore ? null : query(collection(firestore, "orders"), where("status", "==", "Pending")), [firestore])
@@ -322,6 +323,7 @@ export default function DashboardPage() {
     toast({ title: "Pedido Asignado Correctamente" })
   }, [user?.uid, firestore, toast])
 
+  // EARLY RETURNS MUST BE AFTER ALL HOOKS
   if (!mounted) return null
   if (isUserLoading || (user && isUserDataLoading)) return <div className="h-screen w-full flex items-center justify-center bg-slate-900 text-white"><Loader2 className="animate-spin" /></div>
   if (!user) return <LoginScreen />
@@ -508,6 +510,7 @@ export default function DashboardPage() {
               <header className="flex items-center justify-between mb-10">
                 <h2 className="text-3xl font-black tracking-tighter uppercase">Coro Driver</h2>
               </header>
+              {/* FLOW ACTIVATION: Click a ShieldAlert item in lower panel */}
               <div className="flex gap-4 mb-12 overflow-x-auto pb-4 scrollbar-hide">
                 {[
                   { id: "policia", label: "CONTROL", icon: ShieldAlert, bg: "bg-blue-50", color: "text-blue-600" },
@@ -517,6 +520,7 @@ export default function DashboardPage() {
                 ].map((a) => (
                   <Dialog key={a.id}>
                     <DialogTrigger asChild>
+                      {/* DIALOG TRIGGER: Opens DialogContent to input description */}
                       <div className="flex flex-col items-center gap-4 min-w-[100px] cursor-pointer" onClick={() => setSelectedAlertType({id: a.id, label: a.label})}>
                         <div className={cn("h-20 w-20 rounded-[28px] flex items-center justify-center shadow-sm bg-white border border-slate-100")}>
                           <div className={cn("h-12 w-12 rounded-[18px] flex items-center justify-center", a.bg)}>
@@ -529,9 +533,13 @@ export default function DashboardPage() {
                     <DialogContent className="max-w-md w-[92vw] rounded-[48px] p-10">
                       <DialogHeader><DialogTitle className="font-black uppercase text-xl text-center">Reportar {a.label}</DialogTitle></DialogHeader>
                       <div className="py-6">
+                        {/* INPUT: User describes the situation */}
                         <Textarea placeholder="Describe la situación..." className="min-h-[120px] bg-slate-50 rounded-[28px] p-6 text-lg" value={alertDescription} onChange={(e) => setAlertDescription(e.target.value)} />
                       </div>
-                      <DialogFooter><Button onClick={handlePublishAlert} className="w-full h-20 rounded-[32px] bg-slate-900 text-white font-black uppercase">PUBLICAR</Button></DialogFooter>
+                      <DialogFooter>
+                        {/* PUBLISH BUTTON: Triggers handlePublishAlert to save in Firestore */}
+                        <Button onClick={handlePublishAlert} className="w-full h-20 rounded-[32px] bg-slate-900 text-white font-black uppercase">PUBLICAR</Button>
+                      </DialogFooter>
                     </DialogContent>
                   </Dialog>
                 ))}
