@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useRef, useEffect, useCallback } from "react"
@@ -64,31 +65,37 @@ export default function DashboardPage() {
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
   
   const isAdmin = userData?.role === 'Admin'
+  const isDriver = userData?.role === 'Driver'
 
-  // Seguimiento GPS en tiempo real para repartidores
+  // Seguimiento GPS optimizado para repartidores
   useEffect(() => {
-    if (typeof window !== "undefined" && navigator.geolocation) {
+    if (typeof window !== "undefined" && navigator.geolocation && isDriver && user?.uid && firestore) {
       const watchId = navigator.geolocation.watchPosition(
         (position) => {
           const coords = { lat: position.coords.latitude, lng: position.coords.longitude }
           setCurrentCoords(coords)
           
-          if (!isUserLoading && user?.uid && firestore && userData?.role === 'Driver') {
-            const dRef = doc(firestore, "driverProfiles", user.uid)
-            // Usamos setDocument con merge para evitar errores si el documento no existe aún
-            setDocumentNonBlocking(dRef, {
-              currentLatitude: coords.lat,
-              currentLongitude: coords.lng,
-              lastLocationUpdate: new Date().toISOString()
-            }, { merge: true })
-          }
+          const dRef = doc(firestore, "driverProfiles", user.uid)
+          setDocumentNonBlocking(dRef, {
+            currentLatitude: coords.lat,
+            currentLongitude: coords.lng,
+            lastLocationUpdate: new Date().toISOString()
+          }, { merge: true })
         },
-        (error) => console.error("GPS Tracking Error:", error),
-        { enableHighAccuracy: true, maximumAge: 1000, timeout: 5000 }
+        (error) => {
+          // Manejo de errores de GPS más descriptivo
+          const messages: Record<number, string> = {
+            1: "Permiso denegado para el GPS.",
+            2: "Ubicación no disponible.",
+            3: "Tiempo de espera del GPS agotado."
+          };
+          console.warn(`GPS Tracking Warning (${error.code}): ${messages[error.code] || error.message}`);
+        },
+        { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 }
       )
       return () => navigator.geolocation.clearWatch(watchId)
     }
-  }, [isUserLoading, user?.uid, firestore, userData?.role])
+  }, [isDriver, user?.uid, firestore])
 
   // Queries unificadas
   const fleetQuery = useMemoFirebase(() => {
@@ -196,7 +203,6 @@ export default function DashboardPage() {
   if (!mounted) return <div className="fixed inset-0 bg-slate-900" />;
   if (isUserLoading || (user && isUserDataLoading)) return <div className="h-screen w-full flex items-center justify-center bg-slate-900"><Loader2 className="w-8 h-8 animate-spin text-blue-400 opacity-50" /></div>
   
-  // Si no hay usuario autenticado O el documento maestro no existe aún, mostrar login
   if (!user || (!isUserDataLoading && !userData?.role)) return <LoginScreen />;
 
   return (
