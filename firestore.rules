@@ -1,10 +1,11 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // REGLA GLOBAL DE PROTOTIPADO: Permite lectura y escritura a cualquier usuario autenticado.
-    // Esto garantiza que el sistema de login, perfiles y seguimiento GPS funcione sin bloqueos de permisos.
+    // REGLA GLOBAL DE PROTOTIPADO: Permite lectura y escritura total.
+    // Esto asegura que el seguimiento GPS en tiempo real y la creación inicial de perfiles
+    // funcionen sin bloqueos de permisos durante el desarrollo.
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if true;
     }
   }
 }

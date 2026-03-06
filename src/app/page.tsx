@@ -1,10 +1,9 @@
 "use client"
 
-import React, { useState, useRef, useEffect, useCallback, useMemo } from "react"
+import React, { useState, useRef, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Target, Package, User, Truck, ShieldAlert, Layers, LogOut, Navigation, MapPin, MessageCircle, Send, X, ShieldCheck, Phone, Check, Loader2, Sparkles, Menu, Clock, AlertTriangle, Users, Pencil } from "lucide-react"
+import { Target, Truck, ShieldAlert, Layers, Navigation, Sparkles, X, Send, Loader2, Menu, Users, Clock, AlertTriangle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
@@ -16,7 +15,7 @@ import { doc, collection, query, where, orderBy, limit } from "firebase/firestor
 import { useToast } from "@/hooks/use-toast"
 import { Progress } from "@/components/ui/progress"
 import { driverCopilot } from "@/ai/flows/driver-copilot-flow"
-import type { DriverCopilotInput, DriverCopilotOutput, CopilotMessage } from "@/ai/schemas"
+import type { CopilotMessage } from "@/ai/schemas"
 import { LoginScreen } from "@/components/auth/LoginScreen"
 import { AdminOrderItem } from "@/components/dashboard/AdminOrderItem"
 import { DriverOrderCard } from "@/components/dashboard/DriverOrderCard"
@@ -42,7 +41,6 @@ export default function DashboardPage() {
   const startY = useRef(0)
   
   const [currentCoords, setCurrentCoords] = useState<{lat: number, lng: number} | null>(null)
-  const [heading, setHeading] = useState(0)
   const [isNavigating, setIsNavigating] = useState(false)
   const [mapCenterTrigger, setMapCenterTrigger] = useState(0)
   
@@ -58,30 +56,31 @@ export default function DashboardPage() {
 
   useEffect(() => { setMounted(true) }, [])
 
-  // Detección de rol unificada desde la colección maestra 'users'
+  // Fuente de verdad única para el rol y la visualización de la app
   const userDocRef = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null
     return doc(firestore, "users", user.uid)
   }, [firestore, user?.uid])
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef)
+  
   const isAdmin = userData?.role === 'Admin'
 
+  // Seguimiento GPS en tiempo real para repartidores
   useEffect(() => {
     if (typeof window !== "undefined" && navigator.geolocation) {
       const watchId = navigator.geolocation.watchPosition(
         (position) => {
           const coords = { lat: position.coords.latitude, lng: position.coords.longitude }
           setCurrentCoords(coords)
-          if (position.coords.heading !== null) setHeading(position.coords.heading)
           
-          // Actualizar ubicación en driverProfiles solo si es repartidor
           if (!isUserLoading && user?.uid && firestore && userData?.role === 'Driver') {
             const dRef = doc(firestore, "driverProfiles", user.uid)
-            setDocumentNonBlocking(dRef, {
+            // Escritura no bloqueante para el GPS
+            updateDocumentNonBlocking(dRef, {
               currentLatitude: coords.lat,
               currentLongitude: coords.lng,
               lastLocationUpdate: new Date().toISOString()
-            }, { merge: true })
+            })
           }
         },
         (error) => console.error("GPS Tracking Error:", error),
@@ -91,6 +90,7 @@ export default function DashboardPage() {
     }
   }, [isUserLoading, user?.uid, firestore, userData?.role])
 
+  // Queries unificadas
   const fleetQuery = useMemoFirebase(() => {
     if (!firestore || !isAdmin) return null
     return query(collection(firestore, "driverProfiles"), limit(50))
@@ -120,12 +120,6 @@ export default function DashboardPage() {
     return query(collection(firestore, "alerts"), orderBy("updatedAt", "desc"), limit(20))
   }, [firestore, user])
   const { data: alerts } = useCollection(alertsQuery)
-
-  useEffect(() => {
-    if (copilotScrollRef.current) {
-      copilotScrollRef.current.scrollTop = copilotScrollRef.current.scrollHeight
-    }
-  }, [copilotConversation])
 
   const handleSendTextToCopo = async () => {
     if (!copilotMessage.trim() || !user?.uid || isCopoThinking) return;
@@ -162,7 +156,6 @@ export default function DashboardPage() {
   const handleDragEnd = useCallback(() => {
     if (!isDragging) return
     setIsDragging(false)
-    
     if (dragY < -60) {
       if (panelState === "piso") setPanelState("medio")
       else if (panelState === "medio") setPanelState("techo")
@@ -170,7 +163,6 @@ export default function DashboardPage() {
       if (panelState === "techo") setPanelState("medio")
       else if (panelState === "medio") setPanelState("piso")
     }
-    
     setDragY(0)
   }, [dragY, isDragging, panelState])
 
@@ -193,21 +185,18 @@ export default function DashboardPage() {
     }
   }, [isDragging, handleDragMove, handleDragEnd])
 
-  const hasActiveSOS = alerts?.some(a => a.type === 'sos');
-  
   const getPanelTransform = () => {
     let baseOffset = 0
     if (panelState === "piso") baseOffset = 88 
     else if (panelState === "medio") baseOffset = 50 
     else baseOffset = 0 
-    
     return `translateY(calc(${baseOffset}vh + ${dragY}px))`
   }
 
   if (!mounted) return <div className="fixed inset-0 bg-slate-900" />;
   if (isUserLoading || (user && isUserDataLoading)) return <div className="h-screen w-full flex items-center justify-center bg-slate-900"><Loader2 className="w-8 h-8 animate-spin text-blue-400 opacity-50" /></div>
   
-  // Si no hay usuario o no tiene rol definido, mostrar login
+  // Si no hay usuario autenticado O el documento maestro no existe aún, mostrar login
   if (!user || (!isUserDataLoading && !userData?.role)) return <LoginScreen />;
 
   return (
@@ -244,17 +233,17 @@ export default function DashboardPage() {
       </div>
 
       <div className="absolute top-1/2 -translate-y-1/2 right-6 z-20 flex flex-col gap-4">
-        <Button size="icon" onClick={() => setIsNavigating(!isNavigating)} className={cn("h-14 w-14 rounded-full shadow-2xl transition-all active:scale-90", isNavigating ? "bg-blue-600 text-white" : "bg-white text-slate-600")}><Navigation className="w-6 h-6" /></Button>
-        <Button size="icon" onClick={() => setMapCenterTrigger(p => p+1)} className="h-14 w-14 rounded-full shadow-2xl bg-white text-slate-600 active:scale-90"><Target className="w-6 h-6" /></Button>
+        <Button size="icon" onClick={() => setIsNavigating(!isNavigating)} className={cn("h-14 w-14 rounded-full shadow-2xl transition-all", isNavigating ? "bg-blue-600 text-white" : "bg-white text-slate-600")}><Navigation className="w-6 h-6" /></Button>
+        <Button size="icon" onClick={() => setMapCenterTrigger(p => p+1)} className="h-14 w-14 rounded-full shadow-2xl bg-white text-slate-600"><Target className="w-6 h-6" /></Button>
         <Popover open={isAiAssistantOpen} onOpenChange={setIsAiAssistantOpen}>
             <PopoverTrigger asChild>
-                <Button size="icon" className="h-14 w-14 rounded-full shadow-2xl active:scale-90 bg-blue-600 text-white"><Sparkles className="w-6 h-6" /></Button>
+                <Button size="icon" className="h-14 w-14 rounded-full shadow-2xl bg-blue-600 text-white"><Sparkles className="w-6 h-6" /></Button>
             </PopoverTrigger>
             <PopoverContent side="left" align="center" className="w-[340px] max-w-[90vw] rounded-[32px] p-0 mr-4 border-none shadow-2xl bg-transparent">
                 <div className="bg-slate-900/95 backdrop-blur-md rounded-[32px] p-4 flex flex-col max-h-[70vh]">
                   <header className="px-2 flex justify-between items-center mb-4 text-white">
                     <div>
-                      <h2 className="text-xl font-black tracking-tight">Copiloto IA</h2>
+                      <h2 className="text-xl font-black tracking-tight">Copo IA</h2>
                       <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">SOPORTE ACTIVO</p>
                     </div>
                     <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-slate-400" onClick={() => setIsAiAssistantOpen(false)}><X className="w-5 h-5" /></Button>
@@ -270,7 +259,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex gap-2 pt-4 items-center">
                     <Input placeholder="Pregunta a Copo..." className="h-12 bg-slate-800 border-none text-white rounded-full px-6 text-sm" value={copilotMessage} onChange={(e) => setCopilotMessage(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendTextToCopo()} />
-                    <Button onClick={handleSendTextToCopo} size="icon" className="h-12 w-12 rounded-full bg-emerald-500 text-white transition-transform active:scale-90">
+                    <Button onClick={handleSendTextToCopo} size="icon" className="h-12 w-12 rounded-full bg-emerald-500 text-white">
                       {isCopoThinking ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                     </Button>
                   </div>
@@ -282,7 +271,7 @@ export default function DashboardPage() {
       <div className={cn("absolute left-0 right-0 bottom-0 z-40 transform will-change-transform", !isDragging && "transition-transform duration-500")} style={{ transform: getPanelTransform() }}>
         <div className="h-screen w-full max-w-md mx-auto bg-white/80 backdrop-blur-2xl rounded-t-[56px] shadow-[0_-20px_60px_rgba(0,0,0,0.15)] flex flex-col relative border-t border-slate-100">
           <div className="w-full flex flex-col items-center pt-6 pb-4 cursor-grab active:cursor-grabbing touch-none" onMouseDown={(e) => handleDragStart(e.clientY)} onTouchStart={(e) => handleDragStart(e.touches[0].clientY)}>
-            <div className={cn("w-16 h-1.5 rounded-full mb-8", hasActiveSOS ? "bg-red-600 animate-pulse" : "bg-slate-200")}></div>
+            <div className="w-16 h-1.5 rounded-full mb-8 bg-slate-200"></div>
             <div className="w-full px-8">
               <div className="flex bg-slate-100/50 rounded-[40px] p-2 border border-slate-50">
                 {[{id:'ruta', icon:Truck}, {id:'pedidos', icon:Layers}, {id:'central', icon:Users}, {id:'alerta', icon:ShieldAlert}].map(t => (
@@ -303,11 +292,11 @@ export default function DashboardPage() {
                       <h2 className="text-3xl font-black tracking-tighter">Logística Central</h2>
                       <div className="grid grid-cols-2 gap-4 mt-6">
                         <div className="bg-white/5 rounded-3xl p-4 border border-white/10 text-center">
-                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">REPARTIDORES</p>
+                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">FLOTA</p>
                           <p className="text-2xl font-black text-emerald-400">{fleetData?.length || 0}</p>
                         </div>
                         <div className="bg-white/5 rounded-3xl p-4 border border-white/10 text-center">
-                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">ACTIVOS</p>
+                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">RUTAS</p>
                           <p className="text-2xl font-black text-blue-400">{bizAllOrders?.length || 0}</p>
                         </div>
                       </div>
@@ -320,8 +309,8 @@ export default function DashboardPage() {
                   <div className="space-y-6 text-left">
                     <div className="bg-slate-900 rounded-[48px] p-10 text-white shadow-2xl">
                       <h2 className="text-3xl font-black tracking-tighter">Mi Jornada</h2>
-                      <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mt-2">Objetivo diario: 70% completado</p>
-                      <Progress value={70} className="h-1.5 mt-4 bg-white/10" />
+                      <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mt-2">Seguimiento GPS Activo</p>
+                      <Progress value={45} className="h-1.5 mt-4 bg-white/10" />
                     </div>
                     {driverActiveOrders?.map((order, i) => (
                       <DriverOrderCard key={order.id} order={order} index={i} currentCoords={currentCoords} onOpenChat={() => router.push(`/chat?orderId=${order.id}`)} />
@@ -337,16 +326,12 @@ export default function DashboardPage() {
                   <div key={order.id} className="bg-white rounded-[32px] p-6 shadow-xl border border-slate-50">
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">TARIFA PRO</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">OFERTA ACTIVA</p>
                         <p className="text-2xl font-black text-emerald-600 tracking-tighter">${order.offeredPrice || '1,200'}</p>
                       </div>
-                      <Badge className="bg-blue-50 text-blue-600 border-none font-black text-[9px] uppercase tracking-widest">EXPRESO</Badge>
+                      <Badge className="bg-blue-50 text-blue-600 border-none font-black text-[9px] uppercase tracking-widest">ZONA NORTE</Badge>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <MapPin className="w-4 h-4 text-slate-300" />
-                      <p className="text-sm font-bold text-slate-800 uppercase truncate">{order.deliveryAddress}</p>
-                    </div>
-                    <Button onClick={() => updateDocumentNonBlocking(doc(firestore!, "orders", order.id), { driverId: user.uid, status: "Assigned", updatedAt: new Date().toISOString() })} className="w-full h-14 rounded-2xl bg-slate-900 text-white font-black uppercase mt-6 tracking-widest text-xs">TOMAR PEDIDO</Button>
+                    <Button onClick={() => updateDocumentNonBlocking(doc(firestore!, "orders", order.id), { driverId: user.uid, status: "Assigned", updatedAt: new Date().toISOString() })} className="w-full h-14 rounded-2xl bg-slate-900 text-white font-black uppercase tracking-widest text-xs">ACEPTAR RUTA</Button>
                   </div>
                 ))}
               </div>
@@ -355,7 +340,7 @@ export default function DashboardPage() {
               <div className="space-y-6 pt-4 text-left animate-in fade-in slide-in-from-bottom-4">
                 <header>
                   <h2 className="text-3xl font-black tracking-tighter">Comunidad</h2>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Conversaciones y Alertas Live</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Live Updates</p>
                 </header>
                 <div className="space-y-4">
                   {alerts?.map((alert) => (
@@ -374,7 +359,7 @@ export default function DashboardPage() {
                       addDocumentNonBlocking(collection(firestore, "alerts"), {
                         type: a.id, label: a.label, latitude: currentCoords.lat, longitude: currentCoords.lng, authorId: user.uid, likes: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
                       });
-                      toast({ title: "Incidencia Reportada" });
+                      toast({ title: "Reporte Enviado" });
                     }}>
                       <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", a.bgColor)}><a.icon className={cn("w-5 h-5", a.color)} /></div>
                       <span className="text-[10px] font-black uppercase">{a.label}</span>
