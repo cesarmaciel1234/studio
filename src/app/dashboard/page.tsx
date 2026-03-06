@@ -83,7 +83,7 @@ const InteractiveMap = dynamic(() => import('@/components/dashboard/InteractiveM
 const CoroItem = ({ alert, userId, onOpenChat }: { alert: any, userId: string, onOpenChat: (id: string) => void }) => {
   const Icon = alert.type === 'policia' ? ShieldAlert : 
                alert.type === 'trafico' ? Clock : 
-               alert.type === 'obras' ? Navigation : AlertTriangle;
+               alert.type === 'sos' ? Navigation : AlertTriangle;
   
   const colorClass = alert.type === 'policia' ? 'text-blue-600' : 
                      alert.type === 'trafico' ? 'text-orange-600' : 
@@ -221,8 +221,8 @@ const LoginScreen = () => (
 )
 
 export default function DashboardPage() {
-  // --- HOOKS DE REACT (SIEMPRE AL INICIO) ---
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { firestore, auth } = useFirebase()
   const { user, isUserLoading } = useUser()
   const { toast } = useToast()
@@ -245,7 +245,7 @@ export default function DashboardPage() {
   const [alertFilter, setAlertFilter] = useState<'all' | 'mine'>('all')
   const chatScrollRef = useRef<HTMLDivElement>(null)
 
-  // --- HOOKS DE FIREBASE (MEMOIZACIÓN) ---
+  // HOOKS DE FIREBASE MEMOIZADOS (FUERA DE CONDICIONALES)
   const userRef = useMemoFirebase(() => (!firestore || !user?.uid) ? null : doc(firestore, "users", user.uid), [user?.uid, firestore])
   const alertsQuery = useMemoFirebase(() => !firestore ? null : query(collection(firestore, "alerts"), orderBy("createdAt", "desc")), [firestore])
   const pendingOrdersQuery = useMemoFirebase(() => !firestore ? null : query(collection(firestore, "orders"), where("status", "==", "Pending")), [firestore])
@@ -253,7 +253,7 @@ export default function DashboardPage() {
   const orderChatMessagesQuery = useMemoFirebase(() => (!firestore || !selectedChatOrderId) ? null : query(collection(firestore, `orders/${selectedChatOrderId}/chatMessages`), orderBy("timestamp", "asc")), [selectedChatOrderId, firestore])
   const alertChatMessagesQuery = useMemoFirebase(() => (!firestore || !selectedChatAlertId) ? null : query(collection(firestore, `alerts/${selectedChatAlertId}/messages`), orderBy("timestamp", "asc")), [selectedChatAlertId, firestore])
 
-  // --- HOOKS DE DATOS (FIREBASE) ---
+  // DATOS DE FIREBASE
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userRef)
   const { data: alerts } = useCollection(alertsQuery)
   const { data: pendingOrders } = useCollection(pendingOrdersQuery)
@@ -261,7 +261,7 @@ export default function DashboardPage() {
   const { data: orderChatMessages } = useCollection(orderChatMessagesQuery)
   const { data: alertChatMessages } = useCollection(alertChatMessagesQuery)
 
-  // --- HOOKS DE MEMOIZACIÓN DERIVADOS ---
+  // DERIVADOS MEMOIZADOS
   const hasActiveSOS = useMemo(() => alerts?.some(a => a.type === 'sos') || false, [alerts])
   const activeOrder = useMemo(() => driverActiveOrders?.[0], [driverActiveOrders])
   const sheetY = useMemo(() => isMapFullscreen ? 'calc(100% - 40px)' : (isExpanded ? '0' : 'calc(100% - 160px)'), [isMapFullscreen, isExpanded])
@@ -273,9 +273,13 @@ export default function DashboardPage() {
     return alerts || []
   }, [alerts, alertFilter, user?.uid])
 
-  // --- EFECTOS ---
   useEffect(() => {
     setMounted(true)
+    const tab = searchParams.get('tab')
+    const filter = searchParams.get('filter')
+    if (tab) setActiveTab(tab)
+    if (filter === 'mine') setAlertFilter('mine')
+    
     if ("geolocation" in navigator) {
       const watchId = navigator.geolocation.watchPosition(
         (pos) => {
@@ -287,7 +291,7 @@ export default function DashboardPage() {
       )
       return () => navigator.geolocation.clearWatch(watchId)
     }
-  }, [])
+  }, [searchParams])
 
   useEffect(() => {
     if (activeOrder && isNavigating && activeOrder.deliveryLatitude && activeOrder.deliveryLongitude) {
@@ -303,7 +307,6 @@ export default function DashboardPage() {
     }
   }, [selectedChatOrderId, selectedChatAlertId, orderChatMessages?.length, alertChatMessages?.length])
 
-  // --- MANEJADORES ---
   const handlePublishAlert = useCallback(() => {
     if (!selectedAlertType || !user?.uid || !firestore || !currentCoords) return
     addDocumentNonBlocking(collection(firestore, "alerts"), {
@@ -351,7 +354,6 @@ export default function DashboardPage() {
     toast({ title: "Pedido Asignado Correctamente" })
   }, [user?.uid, firestore, toast])
 
-  // --- RETORNOS TEMPRANOS (DESPUÉS DE TODOS LOS HOOKS) ---
   if (!mounted) return null
   if (isUserLoading || (user && isUserDataLoading)) return <div className="h-screen w-full flex items-center justify-center bg-slate-900 text-white"><Loader2 className="animate-spin" /></div>
   if (!user) return <LoginScreen />
@@ -420,7 +422,7 @@ export default function DashboardPage() {
                   <div className="h-11 w-11 rounded-[0.8rem] bg-slate-100 flex items-center justify-center shadow-sm">
                     <MessageSquare className="h-5 w-5 text-slate-900" />
                   </div>
-                  <span className="text-md font-bold text-slate-700">Central: Mensajería</span>
+                  <span className="text-md font-bold text-slate-700">Central: Historial Mensajes</span>
                 </button>
               </div>
               <Button variant="ghost" onClick={() => signOut(auth!)} className="w-full justify-start gap-4 h-16 rounded-3xl text-red-500 font-black px-5 hover:bg-red-50 text-sm"><LogOut className="w-5 h-5" /> Salir del sistema</Button>
@@ -429,20 +431,16 @@ export default function DashboardPage() {
         </Sheet>
       </div>
 
-      {/* RESTORED FLOATING ACTION STACK */}
+      {/* ACTION STACK RESTAURADO */}
       <div className="absolute top-8 right-8 z-10 flex flex-col gap-4 pointer-events-auto">
-        <Button 
-          variant="secondary" 
-          size="icon" 
-          className="h-20 w-20 rounded-full shadow-2xl bg-[#1e293b] border-none text-slate-400 hover:text-white transition-all"
-        >
+        <Button variant="secondary" size="icon" className="h-20 w-20 rounded-full shadow-2xl bg-[#1e293b] border-none text-slate-400 hover:text-white transition-all">
           <Compass className="h-8 w-8" />
         </Button>
         <Button 
           variant="secondary" 
           size="icon" 
           onClick={() => setMapCenterTrigger(t => t + 1)}
-          className="h-20 w-20 rounded-full shadow-2xl bg-white border-none text-slate-900 flex items-center justify-center"
+          className="h-20 w-20 rounded-full shadow-2xl bg-white border-none text-slate-900"
         >
           <Target className="h-8 w-8" />
         </Button>
@@ -654,7 +652,7 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* TAB CONTENT: CENTRAL (CHAT) */}
+          {/* TAB CONTENT: CENTRAL (CHAT PRIVADO EMPRESA-REPARTIDOR) */}
           {activeTab === 'central' && (
              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-left h-full flex flex-col min-h-[500px]">
                 {(selectedChatOrderId || selectedChatAlertId) ? (
@@ -662,7 +660,7 @@ export default function DashboardPage() {
                     <header className="flex items-center gap-4 mb-6 sticky top-0 bg-white p-4 rounded-2xl shadow-sm z-10">
                       <Button variant="ghost" size="icon" onClick={() => { setSelectedChatOrderId(null); setSelectedChatAlertId(null); }} className="rounded-full h-10 w-10"><ChevronLeft className="w-6 h-6" /></Button>
                       <h2 className="text-[14px] font-black tracking-tight uppercase truncate">
-                        {selectedChatOrderId ? `Chat Orden #${selectedChatOrderId.substring(0, 5)}` : `Comentarios Alerta`}
+                        {selectedChatOrderId ? `Empresa • Orden #${selectedChatOrderId.substring(0, 5)}` : `Comunidad • Reporte`}
                       </h2>
                     </header>
                     <div ref={chatScrollRef} className="flex-1 overflow-y-auto space-y-3 px-2 scrollbar-hide mb-4 min-h-[300px]">
@@ -676,14 +674,14 @@ export default function DashboardPage() {
                       ))}
                     </div>
                     <div className="flex gap-2 pt-4 items-center">
-                      <Input placeholder="Escribe un comentario..." className="h-14 bg-white border-none rounded-full px-6 font-medium shadow-lg flex-1 text-sm" value={chatMessageText} onChange={(e) => setChatMessageText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendChatMessage()} />
+                      <Input placeholder="Escribe un mensaje..." className="h-14 bg-white border-none rounded-full px-6 font-medium shadow-lg flex-1 text-sm" value={chatMessageText} onChange={(e) => setChatMessageText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendChatMessage()} />
                       <Button onClick={handleSendChatMessage} size="icon" className="h-14 w-14 rounded-full bg-emerald-500 text-white shadow-xl shrink-0"><Send className="w-5 h-5" /></Button>
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     <h2 className="text-5xl font-black tracking-tighter text-slate-900 leading-tight mb-2">Central</h2>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-12">CANAL DIRECTO</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-12">HISTORIAL MENSAJES PRIVADOS</p>
                     
                     <div className="space-y-4">
                       {driverActiveOrders?.map(order => (
@@ -694,7 +692,7 @@ export default function DashboardPage() {
                             </div>
                             <div className="text-left">
                               <h4 className="font-black text-slate-900 text-base uppercase tracking-tight">ORDEN #{order.id.substring(0, 5)}</h4>
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">CBH • {order.status.toUpperCase()}</p>
+                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">EMPRESA • {order.status.toUpperCase()}</p>
                             </div>
                           </div>
                           <ChevronRight className="w-5 h-5 text-slate-200 group-hover:text-slate-900 transition-colors" />
@@ -704,7 +702,7 @@ export default function DashboardPage() {
                       {driverActiveOrders?.length === 0 && (
                         <div className="py-20 text-center bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200">
                           <MessageSquare className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-                          <p className="text-slate-400 font-black uppercase text-xs tracking-widest">No hay canales de chat activos</p>
+                          <p className="text-slate-400 font-black uppercase text-xs tracking-widest">No hay historial de mensajes privados</p>
                         </div>
                       )}
                     </div>

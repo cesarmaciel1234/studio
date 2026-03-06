@@ -104,7 +104,7 @@ export function AppSidebar() {
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton asChild className="h-auto p-0 hover:bg-transparent">
-              <Link href="/dashboard" className="flex items-center gap-4 group">
+              <Link href="/dashboard?tab=pedidos" className="flex items-center gap-4 group">
                 <div className="h-11 w-11 rounded-[0.8rem] bg-blue-50 flex items-center justify-center shadow-sm">
                   <Package className="h-5 w-5 text-blue-500" />
                 </div>
