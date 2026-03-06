@@ -75,12 +75,12 @@ export default function DashboardPage() {
           
           if (!isUserLoading && user?.uid && firestore && userData?.role === 'Driver') {
             const dRef = doc(firestore, "driverProfiles", user.uid)
-            // Escritura no bloqueante para el GPS
-            updateDocumentNonBlocking(dRef, {
+            // Usamos setDocument con merge para evitar errores si el documento no existe aún
+            setDocumentNonBlocking(dRef, {
               currentLatitude: coords.lat,
               currentLongitude: coords.lng,
               lastLocationUpdate: new Date().toISOString()
-            })
+            }, { merge: true })
           }
         },
         (error) => console.error("GPS Tracking Error:", error),

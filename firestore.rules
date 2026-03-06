@@ -1,11 +1,33 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // REGLA GLOBAL DE PROTOTIPADO: Permite lectura y escritura total para agilizar el desarrollo.
-    // Esto asegura que el seguimiento GPS en tiempo real, la creación de perfiles,
-    // los likes de comunidad y los chats funcionen sin bloqueos de permisos.
+    // REGLA GLOBAL DE PROTOTIPADO: Permite lectura y escritura a usuarios autenticados.
+    // Esto asegura que el seguimiento GPS, perfiles, alertas y chats funcionen sin bloqueos.
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null;
+    }
+    
+    // Reglas explícitas para mayor seguridad en el despliegue
+    match /users/{userId} {
+      allow read, write: if request.auth != null;
+    }
+    match /driverProfiles/{driverId} {
+      allow read, write: if request.auth != null;
+    }
+    match /companyProfiles/{companyId} {
+      allow read, write: if request.auth != null;
+    }
+    match /orders/{orderId} {
+      allow read, write: if request.auth != null;
+      match /messages/{msgId} {
+        allow read, write: if request.auth != null;
+      }
+    }
+    match /alerts/{alertId} {
+      allow read, write: if request.auth != null;
+      match /comments/{commentId} {
+        allow read, write: if request.auth != null;
+      }
     }
   }
 }
