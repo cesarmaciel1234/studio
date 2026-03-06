@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useState, useMemo, useCallback, useRef, useEffect } from "react"
+import { useState, useMemo, useCallback, useEffect, useRef } from "react"
 import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { 
@@ -238,7 +238,7 @@ export default function DashboardPage() {
     }
   }, [])
 
-  // Firebase Data Queries - Solo si el usuario está autenticado y firestore listo
+  // Firebase Data Queries
   const userRef = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
     return doc(firestore, "users", user.uid);
@@ -515,7 +515,7 @@ export default function DashboardPage() {
               </div>
               <div className="space-y-4">
                 {driverActiveOrders?.map((order, i) => (
-                  <DriverOrderCard key={order.id} order={order} index={i} onOpenChat={() => { setSelectedChatOrderId(order.id); setActiveTab('central'); }} />
+                  <DriverOrderCard key={order.id} order={order} index={i} currentCoords={currentCoords} onOpenChat={() => { setSelectedChatOrderId(order.id); setActiveTab('central'); }} />
                 ))}
               </div>
             </div>
