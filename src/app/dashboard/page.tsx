@@ -224,6 +224,7 @@ export default function DashboardPage() {
   const { user, isUserLoading } = useUser()
   const { toast } = useToast()
 
+  // ALL HOOKS MUST BE AT THE TOP
   const [activeTab, setActiveTab] = useState('ruta')
   const [isExpanded, setIsExpanded] = useState(false)
   const [isMapFullscreen, setIsMapFullscreen] = useState(false)
@@ -458,7 +459,7 @@ export default function DashboardPage() {
       <div className="absolute top-8 left-8 right-8 z-10 flex justify-between pointer-events-none">
         <Sheet>
           <SheetTrigger asChild>
-            <Button variant="secondary" size="icon" className="h-16 w-16 rounded-[1.5rem] shadow-2xl bg-white/95 backdrop-blur-md border-none hover:bg-white text-slate-700 pointer-events-auto">
+            <Button variant="secondary" size="icon" className="h-16 w-16 rounded-full shadow-2xl bg-white/95 backdrop-blur-md border-none hover:bg-white text-slate-700 pointer-events-auto">
               <div className="relative">
                 <Menu className="h-7 w-7" />
                 {hasActiveSOS && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-500 border-2 border-white animate-ping"></div>}
@@ -513,31 +514,31 @@ export default function DashboardPage() {
       </div>
 
       {/* ACTION STACK (CONTROLES FLOTANTES) */}
-      <div className="absolute top-8 right-8 z-10 flex flex-col gap-4 pointer-events-auto">
-        <Button variant="secondary" size="icon" className="h-20 w-20 rounded-full shadow-2xl bg-[#1e293b] border-none text-slate-400 hover:text-white transition-all">
-          <Compass className="h-8 w-8" />
+      <div className="absolute top-1/2 -translate-y-1/2 right-8 z-10 flex flex-col gap-4 pointer-events-auto">
+        <Button variant="secondary" size="icon" className="h-16 w-16 rounded-full shadow-xl bg-white border-none text-slate-700 hover:text-slate-900 transition-all">
+          <Compass className="h-6 w-6" />
         </Button>
         <Button 
           variant="secondary" 
           size="icon" 
           onClick={() => setMapCenterTrigger(t => t + 1)}
-          className="h-20 w-20 rounded-full shadow-2xl bg-white border-none text-slate-900"
+          className="h-16 w-16 rounded-full shadow-xl bg-white border-none text-slate-700"
         >
-          <Target className="h-8 w-8" />
+          <Target className="h-6 w-6" />
         </Button>
         <Button 
           variant="secondary" 
           size="icon" 
           onClick={() => setIsMapFullscreen(!isMapFullscreen)}
-          className="h-20 w-20 rounded-full shadow-2xl bg-white border-none text-slate-900"
+          className="h-16 w-16 rounded-full shadow-xl bg-white border-none text-slate-700"
         >
-          <Maximize className="h-8 w-8" />
+          <Maximize className="h-6 w-6" />
         </Button>
         <Button 
           variant="secondary" 
           size="icon" 
           onClick={() => setIsAiAssistantOpen(true)}
-          className="h-20 w-20 rounded-full shadow-2xl bg-[#2563eb] border-none text-white hover:bg-blue-700"
+          className="h-20 w-20 rounded-full shadow-2xl bg-[#2563eb] border-none text-white hover:bg-blue-700 mt-4"
         >
           <Sparkles className="h-8 w-8" />
         </Button>
@@ -553,24 +554,12 @@ export default function DashboardPage() {
       )}
 
       {/* SLIDING BOTTOM PANEL */}
-      <div className={cn("absolute inset-x-0 bottom-0 bg-white shadow-[0_-20px_50px_rgba(0,0,0,0.1)] rounded-t-[3.5rem] transition-all duration-500 ease-in-out z-20 overflow-hidden flex flex-col", isExpanded ? "top-20" : "top-1/2")}>
+      <div className={cn("absolute inset-x-0 bottom-0 bg-white shadow-[0_-20px_50px_rgba(0,0,0,0.1)] rounded-t-[4rem] transition-all duration-500 ease-in-out z-20 overflow-hidden flex flex-col", isExpanded ? "top-20" : "top-1/2")}>
         <div className="h-12 w-full flex items-center justify-center cursor-pointer active:bg-slate-50" onClick={() => setIsExpanded(!isExpanded)}>
           <div className={cn("w-16 h-1.5 rounded-full mb-8", hasActiveSOS ? "bg-red-600 animate-pulse" : "bg-slate-200")}></div>
         </div>
         
-        <div className="flex-1 overflow-y-auto px-8 pb-12 scrollbar-hide">
-          {/* TAB NAVIGATION: RESTORED PRIVATE MESSAGING TAB FOR ACTIVE ORDERS */}
-          <div className="flex justify-center mb-10 sticky top-0 bg-white pt-2 pb-4 z-30">
-            <div className="bg-slate-50 p-2 rounded-[2.5rem] flex items-center gap-2 shadow-inner border border-slate-100">
-              <Button variant="ghost" size="icon" onClick={() => setActiveTab("ruta")} className={cn("h-16 w-16 rounded-[1.8rem]", activeTab === "ruta" ? "bg-slate-900 text-white" : "text-slate-400")}><Truck className="h-7 w-7" /></Button>
-              <Button variant="ghost" size="icon" onClick={() => setActiveTab("pedidos")} className={cn("h-16 w-16 rounded-[1.8rem]", activeTab === "pedidos" ? "bg-slate-900 text-white" : "text-slate-400")}><Layers className="h-7 w-7" /></Button>
-              {activeOrder && (
-                <Button variant="ghost" size="icon" onClick={() => setActiveTab("chat")} className={cn("h-16 w-16 rounded-[1.8rem]", activeTab === "chat" ? "bg-slate-900 text-white" : "text-slate-400")}><MessageSquare className="h-7 w-7" /></Button>
-              )}
-              <Button variant="ghost" size="icon" onClick={() => setActiveTab("alerta")} className={cn("h-16 w-16 rounded-[1.8rem]", activeTab === "alerta" ? "bg-slate-900 text-white" : "text-slate-400")}><ShieldAlert className="h-7 w-7" /></Button>
-            </div>
-          </div>
-
+        <div className="flex-1 overflow-y-auto px-8 pb-20 scrollbar-hide">
           {/* TAB CONTENT: RUTA */}
           {activeTab === 'ruta' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-left">
@@ -768,6 +757,58 @@ export default function DashboardPage() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* BOTTOM NAVIGATION BAR: MATCHING IMAGE STYLE */}
+        <div className="absolute inset-x-0 bottom-6 flex justify-center pointer-events-none px-8">
+          <div className="bg-white/90 backdrop-blur-md p-2 rounded-[2.5rem] flex items-center gap-2 shadow-2xl border border-slate-100 pointer-events-auto">
+            <Button 
+              variant="ghost" 
+              onClick={() => { setActiveTab("ruta"); setIsExpanded(false); }} 
+              className={cn(
+                "h-14 flex items-center gap-3 px-8 transition-all duration-300", 
+                activeTab === "ruta" ? "bg-slate-900 text-white rounded-[2rem]" : "text-slate-400"
+              )}
+            >
+              <Truck className="h-6 w-6" />
+              {activeTab === "ruta" && <span className="font-black text-[10px] uppercase tracking-widest">RUTA</span>}
+            </Button>
+            
+            <Button 
+              variant="ghost" 
+              onClick={() => { setActiveTab("pedidos"); setIsExpanded(false); }} 
+              className={cn(
+                "h-14 w-14 rounded-full p-0 flex items-center justify-center transition-all duration-300", 
+                activeTab === "pedidos" ? "bg-slate-900 text-white" : "text-slate-400"
+              )}
+            >
+              <Layers className="h-6 w-6" />
+            </Button>
+
+            {activeOrder && (
+              <Button 
+                variant="ghost" 
+                onClick={() => { setActiveTab("chat"); setIsExpanded(false); }} 
+                className={cn(
+                  "h-14 w-14 rounded-full p-0 flex items-center justify-center transition-all duration-300", 
+                  activeTab === "chat" ? "bg-slate-900 text-white" : "text-slate-400"
+                )}
+              >
+                <MessageSquare className="h-6 w-6" />
+              </Button>
+            )}
+
+            <Button 
+              variant="ghost" 
+              onClick={() => { setActiveTab("alerta"); setIsExpanded(false); }} 
+              className={cn(
+                "h-14 w-14 rounded-full p-0 flex items-center justify-center transition-all duration-300", 
+                activeTab === "alerta" ? "bg-slate-900 text-white" : "text-slate-400"
+              )}
+            >
+              <ShieldAlert className="h-6 w-6" />
+            </Button>
+          </div>
         </div>
       </div>
     </div>
