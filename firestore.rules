@@ -2,7 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- GLOBAL HELPER FUNCTIONS ---
+    // --- FUNCIONES DE AYUDA ---
 
     function isSignedIn() {
       return request.auth != null;
@@ -12,19 +12,19 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // --- COLLECTION RULES ---
+    // --- REGLAS DE COLECCIONES ---
 
     /**
      * @description Reglas para usuarios.
-     * Permitimos lectura general para facilitar la visibilidad de la flota.
+     * Cualquier usuario autenticado puede leer perfiles para ver la flota.
      */
     match /users/{userId} {
       allow read: if isSignedIn();
-      allow create, update: if isOwner(userId);
+      allow write: if isOwner(userId);
     }
 
     /**
-     * @description Perfiles de conductores y empresas.
+     * @description Perfiles específicos por rol.
      */
     match /driverProfiles/{driverId} {
       allow read: if isSignedIn();
@@ -38,7 +38,7 @@ service cloud.firestore {
 
     /**
      * @description Pedidos logísticos.
-     * Todos los conductores deben poder LISTAR pedidos para aceptarlos.
+     * Permitimos lectura (get y list) a todos los usuarios firmados para que los conductores vean ofertas.
      */
     match /orders/{orderId} {
       allow read: if isSignedIn();
@@ -52,7 +52,7 @@ service cloud.firestore {
     }
 
     /**
-     * @description Alertas viales (Coro Driver).
+     * @description Alertas viales y SOS.
      */
     match /alerts/{alertId} {
       allow read: if isSignedIn();
@@ -61,7 +61,7 @@ service cloud.firestore {
     }
 
     /**
-     * @description Vehículos.
+     * @description Gestión de vehículos.
      */
     match /vehicles/{vehicleId} {
       allow read: if isSignedIn();
