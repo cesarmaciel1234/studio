@@ -218,13 +218,13 @@ const LoginScreen = () => (
 )
 
 export default function DashboardPage() {
+  // --- HOOKS: MUST BE AT THE TOP AND UNCONDITIONAL ---
   const router = useRouter()
   const searchParams = useSearchParams()
   const { firestore, auth } = useFirebase()
   const { user, isUserLoading } = useUser()
   const { toast } = useToast()
 
-  // ALL HOOKS MUST BE AT THE TOP
   const [activeTab, setActiveTab] = useState('ruta')
   const [isExpanded, setIsExpanded] = useState(false)
   const [isMapFullscreen, setIsMapFullscreen] = useState(false)
@@ -243,7 +243,7 @@ export default function DashboardPage() {
   const [alertFilter, setAlertFilter] = useState<'all' | 'mine'>('all')
   const chatScrollRef = useRef<HTMLDivElement>(null)
 
-  // HOOKS DE FIREBASE MEMOIZADOS (TODOS AL INICIO PARA CUMPLIR RULES OF HOOKS)
+  // Firebase Refs (Memoized)
   const userRef = useMemoFirebase(() => (!firestore || !user?.uid) ? null : doc(firestore, "users", user.uid), [user?.uid, firestore])
   const alertsQuery = useMemoFirebase(() => !firestore ? null : query(collection(firestore, "alerts"), orderBy("createdAt", "desc")), [firestore])
   const pendingOrdersQuery = useMemoFirebase(() => !firestore ? null : query(collection(firestore, "orders"), where("status", "==", "Pending")), [firestore])
@@ -251,7 +251,7 @@ export default function DashboardPage() {
   const orderChatMessagesQuery = useMemoFirebase(() => (!firestore || !selectedChatOrderId) ? null : query(collection(firestore, `orders/${selectedChatOrderId}/chatMessages`), orderBy("timestamp", "asc")), [selectedChatOrderId, firestore])
   const alertChatMessagesQuery = useMemoFirebase(() => (!firestore || !selectedChatAlertId) ? null : query(collection(firestore, `alerts/${selectedChatAlertId}/messages`), orderBy("timestamp", "asc")), [selectedChatAlertId, firestore])
 
-  // DATOS DE FIREBASE
+  // Data Fetching
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userRef)
   const { data: alerts } = useCollection(alertsQuery)
   const { data: pendingOrders } = useCollection(pendingOrdersQuery)
@@ -259,11 +259,10 @@ export default function DashboardPage() {
   const { data: orderChatMessages } = useCollection(orderChatMessagesQuery)
   const { data: alertChatMessages } = useCollection(alertChatMessagesQuery)
 
-  // DERIVADOS MEMOIZADOS
-  const hasActiveSOS = useMemo(() => alerts?.some(a => a.type === 'sos') || false, [alerts])
+  // Derived Values
   const activeOrder = useMemo(() => driverActiveOrders?.[0], [driverActiveOrders])
   const isCentralLayout = useMemo(() => activeTab === 'central', [activeTab])
-  
+  const hasActiveSOS = useMemo(() => alerts?.some(a => a.type === 'sos') || false, [alerts])
   const filteredAlerts = useMemo(() => {
     if (alertFilter === 'mine' && user?.uid) {
       return alerts?.filter(a => a.authorId === user.uid) || []
@@ -271,6 +270,7 @@ export default function DashboardPage() {
     return alerts || []
   }, [alerts, alertFilter, user?.uid])
 
+  // Effects
   useEffect(() => {
     setMounted(true)
     const tab = searchParams.get('tab')
@@ -305,6 +305,7 @@ export default function DashboardPage() {
     }
   }, [selectedChatOrderId, selectedChatAlertId, orderChatMessages?.length, alertChatMessages?.length])
 
+  // Callbacks
   const handlePublishAlert = useCallback(() => {
     if (!selectedAlertType || !user?.uid || !firestore || !currentCoords) return
     addDocumentNonBlocking(collection(firestore, "alerts"), {
@@ -354,11 +355,12 @@ export default function DashboardPage() {
     toast({ title: "Pedido Asignado Correctamente" })
   }, [user?.uid, firestore, toast])
 
+  // --- CONDITIONAL RENDERS: MUST BE AFTER ALL HOOKS ---
   if (!mounted) return null
   if (isUserLoading || (user && isUserDataLoading)) return <div className="h-screen w-full flex items-center justify-center bg-slate-900 text-white"><Loader2 className="animate-spin" /></div>
   if (!user) return <LoginScreen />
 
-  // MODO CENTRAL: LAYOUT DE PANTALLA COMPLETA PARA HISTORIAL
+  // --- CENTRAL LAYOUT (FULL SCREEN MESSAGING HISTORY) ---
   if (isCentralLayout) {
     return (
       <div className="h-screen w-full bg-white flex flex-col animate-in fade-in duration-500">
@@ -513,7 +515,7 @@ export default function DashboardPage() {
         </Sheet>
       </div>
 
-      {/* ACTION STACK (CONTROLES FLOTANTES) */}
+      {/* ACTION STACK (FLOATING CONTROLS) */}
       <div className="absolute top-1/2 -translate-y-1/2 right-8 z-10 flex flex-col gap-4 pointer-events-auto">
         <Button variant="secondary" size="icon" className="h-16 w-16 rounded-full shadow-xl bg-white border-none text-slate-700 hover:text-slate-900 transition-all">
           <Compass className="h-6 w-6" />
@@ -759,7 +761,7 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* BOTTOM NAVIGATION BAR: MATCHING IMAGE STYLE */}
+        {/* BOTTOM NAVIGATION BAR: MODERN PILL STYLE */}
         <div className="absolute inset-x-0 bottom-6 flex justify-center pointer-events-none px-8">
           <div className="bg-white/90 backdrop-blur-md p-2 rounded-[2.5rem] flex items-center gap-2 shadow-2xl border border-slate-100 pointer-events-auto">
             <Button 
@@ -785,6 +787,7 @@ export default function DashboardPage() {
               <Layers className="h-6 w-6" />
             </Button>
 
+            {/* ONLY SHOW CHAT FOR ACTIVE ORDERS */}
             {activeOrder && (
               <Button 
                 variant="ghost" 
