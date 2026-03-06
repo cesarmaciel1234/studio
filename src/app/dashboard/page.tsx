@@ -27,7 +27,10 @@ import {
   Send,
   Phone,
   Heart,
-  Boxes
+  Boxes,
+  Bot,
+  Compass,
+  Zap
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -60,6 +63,7 @@ import { collection, doc, query, where, orderBy } from "firebase/firestore"
 import { signOut } from "firebase/auth"
 import { useToast } from "@/hooks/use-toast"
 import { format } from "date-fns"
+import { CapoAssistant } from "@/components/dashboard/CapoAssistant"
 
 // Importación dinámica del mapa para evitar errores de SSR
 const InteractiveMap = dynamic(() => import('@/components/dashboard/InteractiveMap'), {
@@ -91,7 +95,7 @@ const CoroItem = ({ alert, userId, onOpenChat }: { alert: any, userId: string, o
           <Icon className={cn("w-6 h-6", colorClass)} />
         </div>
         <div className="flex-1 text-left">
-          <div className="flex flex-wrap items-center gap-2 mb-1">
+          <div className="flex wrap items-center gap-2 mb-1">
              <h4 className={cn("font-black text-xs uppercase tracking-tight", colorClass)}>{alert.label}</h4>
              <span className="text-slate-200">•</span>
              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
@@ -207,7 +211,7 @@ export default function DashboardPage() {
   const { user, isUserLoading } = useUser()
   const { toast } = useToast()
 
-  // ALL HOOKS MUST BE AT THE TOP
+  // ALL HOOKS MUST BE AT THE TOP (ABSOLUTELY NO EARLY RETURNS BEFORE THIS)
   const [activeTab, setActiveTab] = useState('ruta')
   const [isExpanded, setIsExpanded] = useState(false)
   const [isMapFullscreen, setIsMapFullscreen] = useState(false)
@@ -323,7 +327,7 @@ export default function DashboardPage() {
     toast({ title: "Pedido Asignado Correctamente" })
   }, [user?.uid, firestore, toast])
 
-  // EARLY RETURNS MUST BE AFTER ALL HOOKS
+  // EARLY RETURNS
   if (!mounted) return null
   if (isUserLoading || (user && isUserDataLoading)) return <div className="h-screen w-full flex items-center justify-center bg-slate-900 text-white"><Loader2 className="animate-spin" /></div>
   if (!user) return <LoginScreen />
@@ -342,10 +346,11 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="absolute top-8 left-8 z-10">
+      {/* HEADER CONTROLS */}
+      <div className="absolute top-8 left-8 right-8 z-10 flex justify-between pointer-events-none">
         <Sheet>
           <SheetTrigger asChild>
-            <Button variant="secondary" size="icon" className="h-16 w-16 rounded-[1.5rem] shadow-2xl bg-white/95 backdrop-blur-md border-none hover:bg-white text-slate-700">
+            <Button variant="secondary" size="icon" className="h-16 w-16 rounded-[1.5rem] shadow-2xl bg-white/95 backdrop-blur-md border-none hover:bg-white text-slate-700 pointer-events-auto">
               <div className="relative">
                 <Menu className="h-7 w-7" />
                 {hasActiveSOS && <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-500 border-2 border-white animate-ping"></div>}
@@ -374,19 +379,60 @@ export default function DashboardPage() {
                   </div>
                   <span className="text-md font-bold text-slate-700">Mi billetera</span>
                 </Link>
-                <Link href="/orders" className="flex items-center gap-4 group">
+                <Link href="/dashboard" className="flex items-center gap-4 group" onClick={() => setActiveTab('pedidos')}>
                   <div className="h-11 w-11 rounded-[0.8rem] bg-blue-50 flex items-center justify-center shadow-sm">
                     <Package className="h-5 w-5 text-blue-500" />
                   </div>
-                  <span className="text-md font-bold text-slate-700">Historial Pedidos</span>
+                  <span className="text-md font-bold text-slate-700">Pedidos</span>
+                </Link>
+                <Link href="/dashboard" className="flex items-center gap-4 group" onClick={() => setActiveTab('alerta')}>
+                  <div className="h-11 w-11 rounded-[0.8rem] bg-red-50 flex items-center justify-center shadow-sm">
+                    <ShieldAlert className="h-5 w-5 text-red-500" />
+                  </div>
+                  <span className="text-md font-bold text-slate-700">Alerta Comunidad</span>
+                </Link>
+                <Link href="/dashboard" className="flex items-center gap-4 group" onClick={() => setActiveTab('central')}>
+                  <div className="h-11 w-11 rounded-[0.8rem] bg-slate-100 flex items-center justify-center shadow-sm">
+                    <MessageSquare className="h-5 w-5 text-slate-900" />
+                  </div>
+                  <span className="text-md font-bold text-slate-700">Central: Mensajería</span>
                 </Link>
               </div>
               <Button variant="ghost" onClick={() => signOut(auth!)} className="w-full justify-start gap-4 h-16 rounded-3xl text-red-500 font-black px-5 hover:bg-red-50 text-sm"><LogOut className="w-5 h-5" /> Salir del sistema</Button>
             </div>
           </SheetContent>
         </Sheet>
+
+        <div className="flex gap-4 pointer-events-auto">
+          <Button 
+            variant="secondary" 
+            size="icon" 
+            onClick={() => setMapCenterTrigger(t => t + 1)}
+            className="h-16 w-16 rounded-[1.5rem] shadow-2xl bg-white/95 backdrop-blur-md border-none text-blue-600"
+          >
+            <Compass className="h-7 w-7" />
+          </Button>
+          <Button 
+            variant="secondary" 
+            size="icon" 
+            onClick={() => setIsAiAssistantOpen(true)}
+            className="h-16 w-16 rounded-[1.5rem] shadow-2xl bg-slate-900 border-none text-white hover:bg-black"
+          >
+            <Bot className="h-7 w-7" />
+          </Button>
+        </div>
       </div>
 
+      {/* AI ASSISTANT OVERLAY */}
+      {isAiAssistantOpen && (
+        <div className="absolute inset-0 z-[60] p-4 bg-black/20 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="h-full max-w-lg mx-auto">
+            <CapoAssistant onClose={() => setIsAiAssistantOpen(false)} />
+          </div>
+        </div>
+      )}
+
+      {/* BOTTOM PANEL */}
       <div className={cn("absolute inset-x-0 bottom-0 bg-white shadow-[0_-20px_50px_rgba(0,0,0,0.1)] rounded-t-[3.5rem] transition-all duration-500 ease-in-out z-20 overflow-hidden flex flex-col", sheetY === '0' ? "top-20" : sheetY === 'calc(100% - 40px)' ? "top-[calc(100%-40px)]" : "top-1/2")}>
         <div className="h-12 w-full flex items-center justify-center cursor-pointer active:bg-slate-50" onClick={() => setIsExpanded(!isExpanded)}>
           <div className={cn("w-16 h-1.5 rounded-full mb-8", hasActiveSOS ? "bg-red-600 animate-pulse" : "bg-slate-200")}></div>
@@ -434,7 +480,7 @@ export default function DashboardPage() {
               </div>
               {activeOrder ? (
                 <Card className="rounded-[3rem] border-none shadow-[0_30px_60px_rgba(0,0,0,0.08)] bg-white p-10 relative">
-                  <div className="flex justify-between items-start mb-8">
+                  <div className="flex wrap justify-between items-start mb-8">
                     <div className="space-y-2">
                       <Badge className="bg-orange-100 text-orange-600 border-none font-black text-[10px] py-1.5 px-4 rounded-full uppercase tracking-widest">
                         RECOGER EN 8 MIN
@@ -510,7 +556,8 @@ export default function DashboardPage() {
               <header className="flex items-center justify-between mb-10">
                 <h2 className="text-3xl font-black tracking-tighter uppercase">Coro Driver</h2>
               </header>
-              {/* FLOW ACTIVATION: Click a ShieldAlert item in lower panel */}
+              
+              {/* FLUJO DE ALERTA: Selección de tipo y publicación */}
               <div className="flex gap-4 mb-12 overflow-x-auto pb-4 scrollbar-hide">
                 {[
                   { id: "policia", label: "CONTROL", icon: ShieldAlert, bg: "bg-blue-50", color: "text-blue-600" },
@@ -520,7 +567,6 @@ export default function DashboardPage() {
                 ].map((a) => (
                   <Dialog key={a.id}>
                     <DialogTrigger asChild>
-                      {/* DIALOG TRIGGER: Opens DialogContent to input description */}
                       <div className="flex flex-col items-center gap-4 min-w-[100px] cursor-pointer" onClick={() => setSelectedAlertType({id: a.id, label: a.label})}>
                         <div className={cn("h-20 w-20 rounded-[28px] flex items-center justify-center shadow-sm bg-white border border-slate-100")}>
                           <div className={cn("h-12 w-12 rounded-[18px] flex items-center justify-center", a.bg)}>
@@ -533,11 +579,9 @@ export default function DashboardPage() {
                     <DialogContent className="max-w-md w-[92vw] rounded-[48px] p-10">
                       <DialogHeader><DialogTitle className="font-black uppercase text-xl text-center">Reportar {a.label}</DialogTitle></DialogHeader>
                       <div className="py-6">
-                        {/* INPUT: User describes the situation */}
                         <Textarea placeholder="Describe la situación..." className="min-h-[120px] bg-slate-50 rounded-[28px] p-6 text-lg" value={alertDescription} onChange={(e) => setAlertDescription(e.target.value)} />
                       </div>
                       <DialogFooter>
-                        {/* PUBLISH BUTTON: Triggers handlePublishAlert to save in Firestore */}
                         <Button onClick={handlePublishAlert} className="w-full h-20 rounded-[32px] bg-slate-900 text-white font-black uppercase">PUBLICAR</Button>
                       </DialogFooter>
                     </DialogContent>

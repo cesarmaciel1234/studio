@@ -14,7 +14,8 @@ import {
   X,
   Pencil,
   MessageSquare,
-  ShieldAlert
+  ShieldAlert,
+  Package
 } from "lucide-react"
 
 import {
@@ -41,8 +42,8 @@ const navItems = [
   },
   { 
     name: "Pedidos: Propios y entregados", 
-    href: "/orders", 
-    icon: ShoppingBag, 
+    href: "/dashboard", 
+    icon: Package, 
     color: "text-blue-500", 
     bg: "bg-blue-50" 
   },
@@ -70,7 +71,6 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-none bg-[#e2e8f0]/80 backdrop-blur-xl">
       <SidebarHeader className="p-6 pb-2">
-        {/* Close Button */}
         <div className="flex justify-end -mt-2 -mr-2">
           <Button 
             variant="ghost" 
@@ -82,7 +82,6 @@ export function AppSidebar() {
           </Button>
         </div>
 
-        {/* Profile Section */}
         <div className="flex items-center gap-4 mt-2 mb-6">
           <div className="relative">
             <Avatar className="h-14 w-14 border-2 border-white shadow-lg">
@@ -98,7 +97,6 @@ export function AppSidebar() {
           </div>
         </div>
 
-        {/* Mode Selector Toggle */}
         <div className="bg-slate-200/50 p-1 rounded-[1.2rem] flex items-center mb-4">
           <button
             onClick={() => setMode("driver")}

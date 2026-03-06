@@ -2,13 +2,12 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Reglas de seguridad globales robustas para el prototipo
-    // Permite lectura y escritura a cualquier usuario autenticado (incluyendo anónimos)
+    // Reglas robustas para prototipado: permite lectura y escritura a cualquier usuario autenticado
     match /{document=**} {
       allow read, write: if request.auth != null;
     }
     
-    // Reglas específicas por colección para asegurar operaciones de listado ('list')
+    // Reglas explícitas para asegurar operaciones de listado ('list')
     match /users/{userId} {
       allow read, write: if request.auth != null;
     }
