@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,10 +13,9 @@ import { useToast } from "@/hooks/use-toast";
 export const AdminOrderItem = React.memo(function AdminOrderItem({ order, onCenterMap, onOpenChat }: { order: any, onCenterMap: (lat: number, lng: number) => void, onOpenChat: (orderId: string) => void }) {
   const firestore = useFirestore()
   const { toast } = useToast()
-  
   const driverRef = useMemoFirebase(() => {
     if (!firestore || !order.driverId) return null
-    return doc(firestore, "driverProfiles", order.driverId)
+    return doc(firestore, "users", order.driverId, "driverProfile", order.driverId)
   }, [firestore, order.driverId])
   const { data: driverData } = useDoc(driverRef)
 

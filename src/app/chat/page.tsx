@@ -1,4 +1,9 @@
+
 "use client"
+
+// --- IMPORTS ---
+// Se importan los hooks de React (useState, useRef, etc.), componentes de la UI,
+// utilidades de Firebase, y otras librerías necesarias.
 
 import { useState, useRef, useEffect, useMemo } from "react"
 import { Card, CardContent } from "@/components/ui/card"
@@ -14,21 +19,33 @@ import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
+/**
+ * @component ChatListItem
+ * @description Un componente individual para mostrar cada chat en la lista principal.
+ * Muestra información relevante como el nombre del contacto y el estado del pedido.
+ * @param {object} order - El objeto del pedido que representa esta conversación.
+ * @param {boolean} isAdmin - Si el usuario actual es un administrador.
+ * @param {function} onClick - Función que se ejecuta al hacer clic en el item.
+ * @param {boolean} isSelected - Si este item de chat está actualmente seleccionado.
+ */
 function ChatListItem({ order, isAdmin, onClick, isSelected }: { order: any, isAdmin: boolean, onClick: () => void, isSelected: boolean }) {
   const firestore = useFirestore()
   
+  // Obtiene los datos de la empresa asociada al pedido.
   const companyRef = useMemoFirebase(() => {
     if (!firestore || !order.companyId) return null
     return doc(firestore, "companyProfiles", order.companyId)
   }, [firestore, order.companyId])
   const { data: companyData } = useDoc(companyRef)
 
+  // Obtiene los datos del conductor asociado al pedido.
   const driverRef = useMemoFirebase(() => {
     if (!firestore || !order.driverId) return null
-    return doc(firestore, "driverProfiles", order.driverId)
+    return doc(firestore, "users", order.driverId, "driverProfile", order.driverId)
   }, [firestore, order.driverId])
   const { data: driverData } = useDoc(driverRef)
 
+  // El título del chat depende de si el usuario es admin o conductor.
   const title = isAdmin 
     ? (driverData ? `${driverData.firstName} ${driverData.lastName || ''}` : "Buscando repartidor...")
     : (companyData?.name || "Empresa Logística")
@@ -66,31 +83,48 @@ function ChatListItem({ order, isAdmin, onClick, isSelected }: { order: any, isA
   )
 }
 
+/**
+ * @component ChatPage
+ * @description La página principal de mensajería. Gestiona la lógica para mostrar
+ * la lista de chats o la vista de una conversación específica.
+ */
 export default function ChatPage() {
-  const { user } = useUser()
-  const firestore = useFirestore()
-  const searchParams = useSearchParams()
+  // --- ESTADO Y HOOKS ---
+  const { user } = useUser() // Hook para obtener el usuario autenticado.
+  const firestore = useFirestore() // Hook para obtener la instancia de Firestore.
+  const searchParams = useSearchParams() // Hook para leer parámetros de la URL.
+  
+  // Estado para saber qué chat está seleccionado. Si es null, se muestra la lista.
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
+  // Estado para el texto del mensaje que se está escribiendo.
   const [messageText, setMessageText] = useState("")
+  // Referencia al div que contiene los mensajes para poder hacer scroll hacia abajo.
   const scrollRef = useRef<HTMLDivElement>(null)
 
+  // --- OBTENCIÓN DE DATOS (DATA FETCHING) ---
+
+  // Obtiene el documento del usuario actual para saber su rol.
   const userDocRef = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null
     return doc(firestore, "users", user.uid)
   }, [firestore, user?.uid])
   const { data: userData, isLoading: isUserLoading } = useDoc(userDocRef)
   
+  // Determina si el usuario es un administrador basándose en su rol.
   const isAdmin = userData?.role === 'Admin'
 
+  // Construye la consulta para obtener la lista de chats.
+  // La consulta se memoriza con `useMemoFirebase` para evitar recrearla en cada render.
   const chatsQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid || isUserLoading) return null
     
+    // Si es admin, busca pedidos de su empresa.
     if (isAdmin) {
       return query(
         collection(firestore, "orders"), 
         where("companyId", "==", user.uid)
       )
-    } else {
+    } else { // Si es conductor, busca pedidos asignados a él.
       return query(
         collection(firestore, "orders"), 
         where("driverId", "==", user.uid)
@@ -98,8 +132,11 @@ export default function ChatPage() {
     }
   }, [firestore, user?.uid, isAdmin, isUserLoading])
 
+  // Hook `useCollection` para ejecutar la consulta y obtener los datos en tiempo real.
   const { data: allOrders, isLoading: isLoadingOrders } = useCollection(chatsQuery)
 
+  // Filtra y ordena los pedidos para mostrarlos como chats.
+  // Solo se muestran chats de pedidos que ya tienen un conductor asignado.
   const orders = useMemo(() => {
     if (!allOrders) return []
     return allOrders
@@ -107,10 +144,11 @@ export default function ChatPage() {
       .sort((a, b) => {
         const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0
         const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0
-        return dateB - dateA
+        return dateB - dateA // Ordena por fecha de actualización descendente.
       })
   }, [allOrders])
 
+  // Efecto para seleccionar un chat si se pasa un `orderId` en la URL.
   useEffect(() => {
     const orderIdFromUrl = searchParams.get("orderId")
     if (orderIdFromUrl) {
@@ -118,18 +156,22 @@ export default function ChatPage() {
     }
   }, [searchParams])
 
+  // Encuentra el pedido (chat) seleccionado actualmente.
   const selectedOrder = orders?.find(o => o.id === selectedOrderId)
 
+  // Consulta para obtener los mensajes de la conversación seleccionada.
   const messagesQuery = useMemoFirebase(() => {
     if (!firestore || !selectedOrderId) return null
     return query(
       collection(firestore, "orders", selectedOrderId, "messages"),
-      orderBy("timestamp", "asc")
+      orderBy("timestamp", "asc") // Ordena los mensajes por fecha ascendente.
     )
   }, [firestore, selectedOrderId])
 
+  // Ejecuta la consulta para obtener los mensajes.
   const { data: messages } = useCollection(messagesQuery)
 
+  // Obtiene datos de la empresa y del conductor para mostrar en la cabecera del chat.
   const companyProfileRef = useMemoFirebase(() => {
     if (!firestore || !selectedOrder?.companyId) return null
     return doc(firestore, "companyProfiles", selectedOrder.companyId)
@@ -138,33 +180,46 @@ export default function ChatPage() {
 
   const driverProfileRef = useMemoFirebase(() => {
     if (!firestore || !selectedOrder?.driverId) return null
-    return doc(firestore, "driverProfiles", selectedOrder.driverId)
+    return doc(firestore, "users", selectedOrder.driverId, "driverProfile", selectedOrder.driverId)
   }, [firestore, selectedOrder?.driverId])
   const { data: driverData } = useDoc(driverProfileRef)
 
+
+  // Efecto para hacer scroll automático al final de la conversación cuando llegan nuevos mensajes.
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
   }, [messages])
 
+  // --- MANEJADORES DE EVENTOS ---
+
+  /**
+   * @function handleSendMessage
+   * @description Se ejecuta al enviar un nuevo mensaje.
+   * Crea un nuevo documento en la subcolección de mensajes del pedido.
+   */
   const handleSendMessage = () => {
     if (!messageText.trim() || !selectedOrderId || !user || !firestore) return
 
     const messageData = {
       orderId: selectedOrderId,
       content: messageText,
-      timestamp: serverTimestamp(),
+      timestamp: serverTimestamp(), // Usa la marca de tiempo del servidor para consistencia.
       authorId: user.uid,
       authorEmail: user.email || "anonimo@rutarapida.com",
       isReadByDriver: !isAdmin,
       isReadByCompany: isAdmin
     }
 
+    // Usa una función no bloqueante para una experiencia de usuario más fluida.
     addDocumentNonBlocking(collection(firestore, "orders", selectedOrderId, "messages"), messageData)
-    setMessageText("")
+    setMessageText("") // Limpia el input después de enviar.
   }
 
+  // --- RENDERIZADO ---
+
+  // Si hay un chat seleccionado, muestra la vista de conversación detallada.
   if (selectedOrderId && selectedOrder) {
     const chatTitle = isAdmin 
       ? (driverData ? `${driverData.firstName} ${driverData.lastName || ''}` : "Cargando repartidor...")
@@ -191,6 +246,7 @@ export default function ChatPage() {
           </Button>
         </header>
 
+        {/* Contenedor de mensajes con scroll */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-3 pb-24 scrollbar-hide">
           <div className="bg-white/60 backdrop-blur-sm rounded-3xl p-5 mb-6 text-center space-y-2 border border-white/50">
             <ShieldCheck className="w-8 h-8 text-emerald-500 mx-auto" />
@@ -200,6 +256,7 @@ export default function ChatPage() {
             </p>
           </div>
 
+          {/* Itera sobre los mensajes y los muestra */}
           {messages?.map((msg) => (
             <div key={msg.id} className={cn("flex", msg.authorId === user?.uid ? 'justify-end' : 'justify-start')}>
               <div className={cn(
@@ -229,6 +286,7 @@ export default function ChatPage() {
           )}
         </div>
 
+        {/* Input para escribir un nuevo mensaje */}
         <div className="p-4 pb-10 bg-transparent flex items-center gap-3 mt-auto">
           <Input 
             placeholder="Escribe un mensaje..." 
@@ -249,6 +307,7 @@ export default function ChatPage() {
     )
   }
 
+  // Si no hay ningún chat seleccionado, muestra la lista de todas las conversaciones.
   return (
     <div className="p-6 space-y-6 h-screen flex flex-col bg-slate-50 pb-24">
       <header className="flex items-center justify-between">

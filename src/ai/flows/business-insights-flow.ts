@@ -2,7 +2,7 @@
 /**
  * @fileOverview This file implements a Genkit flow for a conversational business analysis AI.
  *
- * - generateBusinessInsight - A function that acts as a conversational AI analyst for fleet managers.
+ * - generateBusinessInsight: A function that acts as a conversational AI analyst for fleet managers.
  */
 
 import { ai } from '@/ai/genkit';
@@ -12,6 +12,7 @@ import {
   BusinessInsightOutputSchema,
   type BusinessInsightOutput,
 } from '@/ai/schemas';
+import wav from 'wav';
 
 export async function generateBusinessInsight(
   input: BusinessInsightInput
@@ -60,8 +61,6 @@ async function toWav(
   rate = 24000,
   sampleWidth = 2
 ): Promise<string> {
-  // CARGA DINÁMICA: Evita errores de empaquetado en el cliente.
-  const wav = require('wav');
   return new Promise((resolve, reject) => {
     const writer = new wav.Writer({
       channels,
@@ -104,7 +103,7 @@ const conversationalBusinessInsightFlow = ai.defineFlow(
             responseModalities: ['AUDIO'],
             speechConfig: {
               voiceConfig: {
-                voiceName: 'Sinope', // Professional female voice
+                prebuiltVoiceConfig: { voiceName: 'Sinope' }, // Professional female voice
               },
             },
           },
