@@ -1,10 +1,11 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     // REGLAS DE SEGURIDAD PARA RUTARÁPIDA PRO
     // Permite lectura y escritura a cualquier usuario autenticado (incluyendo anónimos)
-    // para todas las colecciones. Esto asegura que los repartidores puedan ver pedidos,
-    // alertas y perfiles de otros conductores sin errores de permisos.
+    // para todas las colecciones principales y subcolecciones.
+    // Esto es necesario para que los repartidores puedan listar pedidos, alertas y mensajes.
     
     match /{document=**} {
       allow read, write: if request.auth != null;

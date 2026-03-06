@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -113,260 +114,6 @@
         "lastLocationUpdate"
       ]
     },
-    "CompanyProfile": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "CompanyProfile",
-      "type": "object",
-      "description": "Contains additional profile information specific to a user with the 'Admin' role, representing a logistics company.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the CompanyProfile entity, which is also the User ID. (Relationship: User 1:1 CompanyProfile)"
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to the associated User entity. (Relationship: User 1:1 CompanyProfile)"
-        },
-        "name": {
-          "type": "string",
-          "description": "The legal name of the logistics company."
-        },
-        "contactEmail": {
-          "type": "string",
-          "description": "The primary contact email for the company.",
-          "format": "email"
-        },
-        "phoneNumber": {
-          "type": "string",
-          "description": "The primary contact phone number for the company."
-        },
-        "address": {
-          "type": "string",
-          "description": "The physical address of the company's main office."
-        },
-        "description": {
-          "type": "string",
-          "description": "A brief description of the company's services or operations."
-        }
-      },
-      "required": [
-        "id",
-        "userId",
-        "name",
-        "contactEmail"
-      ]
-    },
-    "Vehicle": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Vehicle",
-      "type": "object",
-      "description": "Represents a vehicle within the logistics fleet, used by drivers for deliveries.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Vehicle entity."
-        },
-        "licensePlate": {
-          "type": "string",
-          "description": "The vehicle's license plate number."
-        },
-        "make": {
-          "type": "string",
-          "description": "The manufacturer of the vehicle."
-        },
-        "model": {
-          "type": "string",
-          "description": "The model of the vehicle."
-        },
-        "year": {
-          "type": "number",
-          "description": "The manufacturing year of the vehicle."
-        },
-        "type": {
-          "type": "string",
-          "description": "The type of vehicle (e.g., Motorcycle, Van, Truck).",
-          "format": "enum",
-          "items": {
-            "type": "string"
-          }
-        },
-        "capacity": {
-          "type": "number",
-          "description": "The carrying capacity of the vehicle, typically in weight or volume units."
-        },
-        "currentDriverId": {
-          "type": "string",
-          "description": "Reference to the User ID of the driver currently assigned to this vehicle. Can be null if unassigned. (Relationship: User 1:N Vehicle)"
-        },
-        "companyId": {
-          "type": "string",
-          "description": "Reference to the CompanyProfile ID that owns or manages this vehicle. (Relationship: CompanyProfile 1:N Vehicle)"
-        },
-        "currentLocationLat": {
-          "type": "number",
-          "description": "The current latitude of the vehicle's location."
-        },
-        "currentLocationLng": {
-          "type": "number",
-          "description": "The current longitude of the vehicle's location."
-        },
-        "lastLocationUpdate": {
-          "type": "string",
-          "description": "Timestamp of the last known location update for the vehicle.",
-          "format": "date-time"
-        },
-        "status": {
-          "type": "string",
-          "description": "The current operational status of the vehicle.",
-          "format": "enum",
-          "items": {
-            "type": "string"
-          }
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the vehicle record was created.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the vehicle record was last updated.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "licensePlate",
-        "make",
-        "model",
-        "year",
-        "type",
-        "companyId",
-        "currentLocationLat",
-        "currentLocationLng",
-        "lastLocationUpdate",
-        "status",
-        "createdAt",
-        "updatedAt"
-      ]
-    },
-    "Order": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Order",
-      "type": "object",
-      "description": "Represents a delivery or logistics request that needs to be fulfilled by a driver.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Order entity."
-        },
-        "clientName": {
-          "type": "string",
-          "description": "The name of the client who placed the order."
-        },
-        "pickupAddress": {
-          "type": "string",
-          "description": "The full address where the package needs to be picked up."
-        },
-        "pickupLatitude": {
-          "type": "number",
-          "description": "The latitude coordinate of the pickup location."
-        },
-        "pickupLongitude": {
-          "type": "number",
-          "description": "The longitude coordinate of the pickup location."
-        },
-        "deliveryAddress": {
-          "type": "string",
-          "description": "The full address where the package needs to be delivered."
-        },
-        "deliveryLatitude": {
-          "type": "number",
-          "description": "The latitude coordinate of the delivery location."
-        },
-        "deliveryLongitude": {
-          "type": "number",
-          "description": "The longitude coordinate of the delivery location."
-        },
-        "offeredPrice": {
-          "type": "number",
-          "description": "The monetary amount offered for completing the delivery."
-        },
-        "estimatedPickupWindow": {
-          "type": "string",
-          "description": "The estimated time window for picking up the package (e.g., 'Inmediato', '09:00 - 10:00')."
-        },
-        "packageDescription": {
-          "type": "string",
-          "description": "A detailed description of the package content or special handling instructions."
-        },
-        "status": {
-          "type": "string",
-          "description": "The current status of the order in the logistics process.",
-          "format": "enum",
-          "items": {
-            "type": "string"
-          }
-        },
-        "driverId": {
-          "type": "string",
-          "description": "Reference to the User ID of the driver assigned to this order. Null if unassigned. (Relationship: User 1:N Order)"
-        },
-        "companyId": {
-          "type": "string",
-          "description": "Reference to the CompanyProfile ID that created this order. (Relationship: CompanyProfile 1:N Order)"
-        },
-        "pickupContactName": {
-          "type": "string",
-          "description": "The name of the contact person at the pickup location."
-        },
-        "deliveryContactName": {
-          "type": "string",
-          "description": "The name of the contact person at the delivery location."
-        },
-        "assignedAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the order was assigned to a driver.",
-          "format": "date-time"
-        },
-        "pickedUpAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the package was picked up by the driver.",
-          "format": "date-time"
-        },
-        "deliveredAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the package was delivered.",
-          "format": "date-time"
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the order was created.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the order was last updated.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "clientName",
-        "pickupAddress",
-        "pickupLatitude",
-        "pickupLongitude",
-        "deliveryAddress",
-        "deliveryLatitude",
-        "deliveryLongitude",
-        "offeredPrice",
-        "packageDescription",
-        "status",
-        "companyId",
-        "createdAt",
-        "updatedAt"
-      ]
-    },
     "Alert": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Alert",
@@ -453,168 +200,108 @@
         "updatedAt"
       ]
     },
-    "ChatMessage": {
+    "AlertMessage": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "ChatMessage",
+      "title": "AlertMessage",
       "type": "object",
-      "description": "Represents a single message exchanged within a chat conversation related to a specific order.",
+      "description": "A message sent within a community alert context.",
+      "properties": {
+        "id": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "content": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "authorId", "authorName", "content", "timestamp"]
+    },
+    "Order": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Order",
+      "type": "object",
+      "description": "Represents a delivery or logistics request that needs to be fulfilled by a driver.",
       "properties": {
         "id": {
-          "type": "string",
-          "description": "Unique identifier for the ChatMessage entity."
+          "type": "string"
         },
-        "orderId": {
-          "type": "string",
-          "description": "Reference to the Order entity this message belongs to. (Relationship: Order 1:N ChatMessage)"
+        "clientName": {
+          "type": "string"
         },
-        "authorId": {
-          "type": "string",
-          "description": "Reference to the User ID who sent this message. (Relationship: User 1:N ChatMessage)"
+        "pickupAddress": {
+          "type": "string"
         },
-        "content": {
-          "type": "string",
-          "description": "The textual content of the chat message."
+        "pickupLatitude": {
+          "type": "number"
         },
-        "timestamp": {
+        "pickupLongitude": {
+          "type": "number"
+        },
+        "deliveryAddress": {
+          "type": "string"
+        },
+        "deliveryLatitude": {
+          "type": "number"
+        },
+        "deliveryLongitude": {
+          "type": "number"
+        },
+        "offeredPrice": {
+          "type": "number"
+        },
+        "packageDescription": {
+          "type": "string"
+        },
+        "status": {
           "type": "string",
-          "description": "Timestamp indicating when the message was sent.",
+          "format": "enum"
+        },
+        "driverId": {
+          "type": "string"
+        },
+        "companyId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
           "format": "date-time"
         }
       },
       "required": [
         "id",
-        "orderId",
-        "authorId",
-        "content",
-        "timestamp"
+        "clientName",
+        "pickupAddress",
+        "deliveryAddress",
+        "offeredPrice",
+        "status",
+        "createdAt",
+        "updatedAt"
       ]
     }
   },
   "auth": {
     "providers": [
-      "password",
       "anonymous"
     ]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/users/{userId}",
-        "definition": {
-          "entityName": "User",
-          "schema": {
-            "$ref": "#/backend/entities/User"
-          },
-          "description": "Stores user profiles and roles. Only a user can modify their own profile; authenticated users can read (potentially based on specific privacy rules). Admins can read all.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The ID of the user."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/driverProfiles/{driverId}",
-        "definition": {
-          "entityName": "DriverProfile",
-          "schema": {
-            "$ref": "#/backend/entities/DriverProfile"
-          },
-          "description": "Stores specific profile details for drivers. The `driverId` matches the associated user ID. The driver can update their own profile, and company administrators can read them.",
-          "params": [
-            {
-              "name": "driverId",
-              "description": "The ID of the driver, matching the user ID."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/companyProfiles/{companyId}",
-        "definition": {
-          "entityName": "CompanyProfile",
-          "schema": {
-            "$ref": "#/backend/entities/CompanyProfile"
-          },
-          "description": "Stores specific profile details for logistics companies. The `companyId` matches the associated user ID of an admin. Only the associated company administrator can update this profile.",
-          "params": [
-            {
-              "name": "companyId",
-              "description": "The ID of the company, matching the user ID of an admin."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/vehicles/{vehicleId}",
-        "definition": {
-          "entityName": "Vehicle",
-          "schema": {
-            "$ref": "#/backend/entities/Vehicle"
-          },
-          "description": "Stores information about logistics vehicles. Includes 'companyId' for authorization independence, allowing company admins to manage their owned vehicles securely. Drivers assigned to a vehicle might update its location.",
-          "params": [
-            {
-              "name": "vehicleId",
-              "description": "The ID of the vehicle."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/orders/{orderId}",
-        "definition": {
-          "entityName": "Order",
-          "schema": {
-            "$ref": "#/backend/entities/Order"
-          },
-          "description": "Manages delivery orders. Documents include 'companyId' (creator) and 'driverId' (assigned driver) for authorization independence. Company admins manage their orders, and assigned drivers update order status. Unassigned orders are visible to all drivers to accept.",
-          "params": [
-            {
-              "name": "orderId",
-              "description": "The ID of the order."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/orders/{orderId}/chatMessages/{messageId}",
-        "definition": {
-          "entityName": "ChatMessage",
-          "schema": {
-            "$ref": "#/backend/entities/ChatMessage"
-          },
-          "description": "Stores chat messages related to a specific order. Documents include denormalized 'orderCompanyId' and 'orderDriverId' (from the parent order) for authorization independence, allowing rules to verify participants without 'get()' calls.",
-          "params": [
-            {
-              "name": "orderId",
-              "description": "The ID of the parent order."
-            },
-            {
-              "name": "messageId",
-              "description": "The ID of the chat message."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/alerts/{alertId}",
-        "definition": {
-          "entityName": "Alert",
-          "schema": {
-            "$ref": "#/backend/entities/Alert"
-          },
-          "description": "Stores real-time community alerts. Documents include 'authorId', 'likes' (user IDs), and 'participantIds' (user IDs) for in-document authorization. All authenticated users can read alerts; the author or company admins can manage/delete them. New alerts are created with status 'Active'.",
-          "params": [
-            {
-              "name": "alertId",
-              "description": "The ID of the alert."
-            }
-          ]
-        }
-      }
-    ],
-    "reasoning": "The Firestore structure is designed to be secure, scalable, and easily debuggable, prioritizing authorization independence and query efficiency (QAPs). \n\n**Authorization Independence (Strategy A):**\n\n*   **`Alert`:** The `authorId`, `likes`, and `participantIds` are directly embedded within each alert document. This denormalization allows security rules to evaluate access (e.g., who can like, who can resolve) without needing to fetch any parent or related documents (`get()` calls). For example, a rule can check `request.auth.uid == resource.data.authorId` or `request.auth.uid in resource.data.participantIds` directly.\n*   **`Order`:** Each order document includes `companyId` (the creating company) and `driverId` (the assigned driver). This denormalization enables security rules to determine who can manage or update an order (e.g., `request.auth.uid == resource.data.companyId || request.auth.uid == resource.data.driverId`) without a `get()` call to a company or user profile.\n*   **`ChatMessage` (CRITICAL DENORMALIZATION):** Since chat messages belong to an order, their access depends on the order's `companyId` and `driverId`. To achieve authorization independence, `orderCompanyId` and `orderDriverId` are denormalized and stored directly within each `ChatMessage` document. This allows chat rules to verify if the sender (`authorId`) is a valid participant of the associated order without needing to fetch the parent `Order` document. For example, rules can check `request.auth.uid == resource.data.orderCompanyId || request.auth.uid == resource.data.orderDriverId`.\n*   **`Vehicle`:** Each vehicle document contains its `companyId`. This enables rules to ensure that only the owning company's administrator can manage their fleet, independent of parent documents.\n\n**QAPs (Rules are not Filters) & Structural Segregation (Strategy B):**\n\n*   **`users/{userId}`:** Private data, path-based ownership. Only the `userId` can modify their own profile. Admins may have read access.\n*   **`driverProfiles/{driverId}` & `companyProfiles/{companyId}`:** Dedicated collections for specific user roles, ensuring homogeneous security posture. Path-based ownership, where `driverId` and `companyId` correspond to `userId`.\n*   **`vehicles/{vehicleId}`:** All vehicles are in one collection, but each document contains a `companyId`. This supports efficient queries for an admin to list `vehicles` belonging to `myCompanyId` (`where('companyId', '==', request.auth.uid)`) without rules needing to filter on the server side.\n*   **`orders/{orderId}`:** All orders are in a single collection. Queries for admins (`where('companyId', '==', request.auth.uid)`) or drivers (`where('driverId', '==', request.auth.uid)`) are efficient and secure. Drivers can also query for unassigned orders (`where('driverId', '==', null)`), maintaining QAP.\n*   **`alerts/{alertId}`:** A single collection for all community alerts. The user request implies all authenticated users can read all alerts, and client-side filtering occurs (e.g., for SOS alerts). This allows for simple read rules (`allow read: if request.auth.uid != null`). Write/delete access is restricted to the `authorId` or company admins. The presence of `authorId`, `likes`, and `participantIds` facilitates this within the document.\n*   **`orders/{orderId}/chatMessages/{messageId}`:** This subcollection structure naturally scopes chat messages to a specific order, enabling QAPs for fetching messages for a given `orderId`.\n\n**DBAC (Strategy C):** User roles (`Driver`, `Admin`) are stored directly in the `users/{userId}` document's `role` field. This allows rules to retrieve `request.resource.data.role` (for write operations) or `get(/databases/.../documents/users/$(request.auth.uid)).data.role` (for read operations on other collections, but minimizing `get()` is preferred). For authorization, rules will typically check if `request.auth.uid` matches specific `id` fields (`companyId`, `driverId`, `authorId`) in the document being accessed, combined with potential role checks on the user's *own* profile for broader administrative permissions."
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Stores user profiles."
+    },
+    "/alerts/{alertId}": {
+      "schema": "Alert",
+      "description": "Stores community alerts."
+    },
+    "/alerts/{alertId}/messages/{messageId}": {
+      "schema": "AlertMessage",
+      "description": "Stores messages related to a specific community alert."
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Stores delivery orders."
+    }
   }
 }

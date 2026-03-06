@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -67,7 +68,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import * as PopoverPrimitive from "@radix-ui/react-popover"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import Image from "next/image"
 import Link from "next/link"
@@ -99,8 +99,7 @@ const InteractiveMap = dynamic(() => import('@/components/dashboard/InteractiveM
 /**
  * Componente para renderizar una alerta en el feed comunitario (Coro Driver).
  */
-const CoroItem = ({ alert, userId }: { alert: any, userId: string }) => {
-  const isSOS = alert.type === 'sos';
+const CoroItem = ({ alert, userId, onOpenChat }: { alert: any, userId: string, onOpenChat: (id: string) => void }) => {
   const Icon = alert.type === 'policia' ? ShieldAlert : 
                alert.type === 'trafico' ? Clock : 
                alert.type === 'obras' ? Navigation : AlertTriangle;
@@ -126,20 +125,20 @@ const CoroItem = ({ alert, userId }: { alert: any, userId: string }) => {
              <h4 className={cn("font-black text-xs uppercase tracking-tight", colorClass)}>{alert.label}</h4>
              <span className="text-slate-200">•</span>
              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-               {alert.createdAt ? format(new Date(alert.createdAt), 'dd/MM/yy HH:mm') : 'AHORA'} • REPORTE VIAL
+               {alert.createdAt ? format(new Date(alert.createdAt), 'dd/MM/yy HH:mm') : 'AHORA'}
              </p>
           </div>
           <p className="text-sm font-medium text-slate-700 leading-relaxed mb-4">
-            {alert.description || 'Reporte de incidencia en tiempo real en la zona.'}
+            {alert.description}
           </p>
           <div className="flex items-center gap-5">
             <button className="flex items-center gap-1.5 text-slate-400 hover:text-red-500 transition-colors group">
               <Heart className={cn("w-4 h-4", alert.likes?.includes(userId) && "fill-red-500 text-red-500")} />
               <span className="text-[10px] font-black">{alert.likes?.length || 0}</span>
             </button>
-            <button className="flex items-center gap-1.5 text-slate-400 hover:text-blue-500 transition-colors">
+            <button onClick={() => onOpenChat(alert.id)} className="flex items-center gap-1.5 text-slate-400 hover:text-blue-500 transition-colors">
               <MessageSquare className="w-4 h-4" />
-              <span className="text-[10px] font-black">{alert.participantIds?.length ? alert.participantIds.length - 1 : 0}</span>
+              <span className="text-[10px] font-black">CHAT</span>
             </button>
           </div>
         </div>
@@ -186,7 +185,7 @@ export default function DashboardPage() {
   const { user, isUserLoading } = useUser()
   const { toast } = useToast()
 
-  // Estados de UI
+  // 1. REGLA DE HOOKS: Todos los hooks deben ir al principio, sin retornos condicionales previos.
   const [activeTab, setActiveTab] = useState('ruta')
   const [isExpanded, setIsExpanded] = useState(false)
   const [isMapFullscreen, setIsMapFullscreen] = useState(false)
@@ -196,18 +195,36 @@ export default function DashboardPage() {
   const [destinationCoords, setDestinationCoords] = useState<[number, number] | null>(null)
   const [heading, setHeading] = useState(0)
   const [isNavigating, setIsNavigating] = useState(false)
-  
-  // Estados de IA (Capo)
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false)
-
-  // Estados de Negocio
   const [selectedAlertType, setSelectedAlertType] = useState<{id: string, label: string} | null>(null)
   const [alertDescription, setAlertDescription] = useState("")
   const [selectedChatOrderId, setSelectedChatOrderId] = useState<string | null>(null)
+  const [selectedChatAlertId, setSelectedChatAlertId] = useState<string | null>(null)
   const [chatMessageText, setChatMessageText] = useState("")
-
-  // Refs para chat scroll
   const chatScrollRef = useRef<HTMLDivElement>(null)
+
+  // Firebase Data Queries (Memoized)
+  const userRef = useMemoFirebase(() => (!firestore || !user?.uid) ? null : doc(firestore, "users", user.uid), [user?.uid, firestore])
+  const { data: userData, isLoading: isUserDataLoading } = useDoc(userRef)
+  
+  const alertsQuery = useMemoFirebase(() => !firestore ? null : query(collection(firestore, "alerts"), orderBy("createdAt", "desc")), [firestore])
+  const { data: alerts } = useCollection(alertsQuery)
+
+  const pendingOrdersQuery = useMemoFirebase(() => !firestore ? null : query(collection(firestore, "orders"), where("status", "==", "Pending"), orderBy("createdAt", "desc")), [firestore])
+  const { data: pendingOrders } = useCollection(pendingOrdersQuery)
+
+  const driverActiveOrdersQuery = useMemoFirebase(() => (!firestore || !user?.uid) ? null : query(collection(firestore, "orders"), where("driverId", "==", user.uid), where("status", "in", ["Assigned", "Picked Up", "In Transit"])), [user?.uid, firestore])
+  const { data: driverActiveOrders } = useCollection(driverActiveOrdersQuery)
+
+  const orderChatMessagesQuery = useMemoFirebase(() => (!firestore || !selectedChatOrderId) ? null : query(collection(firestore, `orders/${selectedChatOrderId}/chatMessages`), orderBy("timestamp", "asc")), [selectedChatOrderId, firestore])
+  const { data: orderChatMessages } = useCollection(orderChatMessagesQuery)
+
+  const alertChatMessagesQuery = useMemoFirebase(() => (!firestore || !selectedChatAlertId) ? null : query(collection(firestore, `alerts/${selectedChatAlertId}/messages`), orderBy("timestamp", "asc")), [selectedChatAlertId, firestore])
+  const { data: alertChatMessages } = useCollection(alertChatMessagesQuery)
+
+  const hasActiveSOS = useMemo(() => alerts?.some(a => a.type === 'sos') || false, [alerts])
+  const activeOrder = useMemo(() => driverActiveOrders?.[0], [driverActiveOrders])
+  const isAdmin = userData?.role === 'Admin'
 
   useEffect(() => {
     setMounted(true)
@@ -215,9 +232,7 @@ export default function DashboardPage() {
       const watchId = navigator.geolocation.watchPosition(
         (pos) => {
           setCurrentCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude })
-          if (pos.coords.heading !== null) {
-            setHeading(pos.coords.heading)
-          }
+          if (pos.coords.heading !== null) setHeading(pos.coords.heading)
         },
         (err) => console.error(err),
         { enableHighAccuracy: true }
@@ -225,66 +240,6 @@ export default function DashboardPage() {
       return () => navigator.geolocation.clearWatch(watchId)
     }
   }, [])
-
-  // Auto-scroll del chat
-  useEffect(() => {
-    if (chatScrollRef.current) {
-      chatScrollRef.current.scrollTo(0, chatScrollRef.current.scrollHeight)
-    }
-  }, [selectedChatOrderId, chatMessageText])
-
-  // Firebase Data Queries - Solo se ejecutan si hay un usuario autenticado
-  const userRef = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null;
-    return doc(firestore, "users", user.uid);
-  }, [user?.uid, firestore])
-  
-  const { data: userData, isLoading: isUserDataLoading } = useDoc(userRef)
-  const isAdmin = userData?.role === 'Admin'
-
-  const alertsQuery = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null;
-    return query(collection(firestore, "alerts"), orderBy("createdAt", "desc"));
-  }, [firestore, user?.uid])
-  
-  const { data: alerts } = useCollection(alertsQuery)
-
-  const pendingOrdersQuery = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null;
-    return query(collection(firestore, "orders"), where("status", "==", "Pending"), orderBy("createdAt", "desc"));
-  }, [firestore, user?.uid])
-  
-  const { data: pendingOrders } = useCollection(pendingOrdersQuery)
-
-  const driverActiveOrdersQuery = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null;
-    return query(collection(firestore, "orders"), where("driverId", "==", user.uid), where("status", "in", ["Assigned", "Picked Up", "In Transit"]));
-  }, [user?.uid, firestore])
-  
-  const { data: driverActiveOrders } = useCollection(driverActiveOrdersQuery)
-
-  const bizOrdersQuery = useMemoFirebase(() => {
-    if (!firestore || !user?.uid || !isAdmin) return null;
-    return query(collection(firestore, "orders"), where("companyId", "==", user.uid));
-  }, [isAdmin, user?.uid, firestore])
-  
-  const { data: bizAllOrders } = useCollection(bizOrdersQuery)
-
-  const fleetQuery = useMemoFirebase(() => {
-    if (!firestore || !user?.uid || !isAdmin) return null;
-    return query(collection(firestore, "users"), where("role", "==", "Driver"));
-  }, [isAdmin, user?.uid, firestore])
-  
-  const { data: fleetData } = useCollection(fleetQuery)
-
-  const chatMessagesQuery = useMemoFirebase(() => {
-    if (!firestore || !user?.uid || !selectedChatOrderId) return null;
-    return query(collection(firestore, `orders/${selectedChatOrderId}/chatMessages`), orderBy("timestamp", "asc"));
-  }, [selectedChatOrderId, user?.uid, firestore])
-  
-  const { data: chatMessages } = useCollection(chatMessagesQuery)
-
-  const activeOrder = useMemo(() => driverActiveOrders?.[0], [driverActiveOrders])
 
   useEffect(() => {
     if (activeOrder && isNavigating) {
@@ -294,30 +249,17 @@ export default function DashboardPage() {
     }
   }, [activeOrder, isNavigating])
 
-  /**
-   * REGLA DE HOOKS: Todos los hooks (incluyendo useMemo) deben estar por encima de los retornos tempranos.
-   */
-  const hasActiveSOS = useMemo(() => alerts?.some(a => a.type === 'sos') || false, [alerts])
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTo(0, chatScrollRef.current.scrollHeight)
+    }
+  }, [selectedChatOrderId, selectedChatAlertId, chatMessageText])
 
   /**
    * FLUJO: CORO DRIVER - Publicación de Alertas Comunitarias
-   * 
-   * 1. ACTIVACIÓN: El usuario selecciona la pestaña de escudo (ShieldAlert) en el panel.
-   * 2. TIPO DE ALERTA: Se presentan botones (DialogTrigger) para Tráfico, Control, Peligro, etc.
-   * 3. ESTADO: Al hacer click, se guarda el tipo seleccionado en 'selectedAlertType'.
-   * 4. DIÁLOGO: Se abre un Dialog donde el usuario ingresa la descripción en un Textarea.
-   * 5. PUBLICACIÓN: El botón 'PUBLICAR' dispara 'handlePublishAlert'.
-   * 6. DATOS: Se recolectan coordenadas GPS, ID de autor, descripción y etiqueta.
-   * 7. FIRESTORE: Se crea un nuevo documento en la colección 'alerts'.
-   * 8. CIERRE/NOTIFICACIÓN: Se limpia el estado, se cierra el diálogo y se muestra un Toast.
    */
   const handlePublishAlert = () => {
-    if (!selectedAlertType || !user?.uid || !firestore) return
-    if (!currentCoords) {
-      toast({ title: "Error GPS", description: "No se detectó tu ubicación.", variant: "destructive" })
-      return
-    }
-
+    if (!selectedAlertType || !user?.uid || !firestore || !currentCoords) return
     addDocumentNonBlocking(collection(firestore, "alerts"), {
       type: selectedAlertType.id,
       label: selectedAlertType.label,
@@ -331,10 +273,30 @@ export default function DashboardPage() {
       updatedAt: new Date().toISOString(),
       status: "Active"
     })
-    
     setAlertDescription("")
     setSelectedAlertType(null)
     toast({ title: "Reporte Vial Publicado" })
+  }
+
+  const handleSendChatMessage = () => {
+    if (!chatMessageText.trim() || !user?.uid || !firestore) return
+    
+    if (selectedChatOrderId) {
+      addDocumentNonBlocking(collection(firestore, `orders/${selectedChatOrderId}/chatMessages`), {
+        orderId: selectedChatOrderId,
+        authorId: user.uid,
+        content: chatMessageText,
+        timestamp: new Date().toISOString()
+      })
+    } else if (selectedChatAlertId) {
+      addDocumentNonBlocking(collection(firestore, `alerts/${selectedChatAlertId}/messages`), {
+        authorId: user.uid,
+        authorName: userData?.firstName || "Repartidor",
+        content: chatMessageText,
+        timestamp: new Date().toISOString()
+      })
+    }
+    setChatMessageText("")
   }
 
   const handleAcceptOrder = (orderId: string) => {
@@ -347,17 +309,7 @@ export default function DashboardPage() {
     toast({ title: "Pedido Asignado" })
   }
 
-  const handleSendChatMessage = () => {
-    if (!selectedChatOrderId || !chatMessageText.trim() || !user?.uid || !firestore) return
-    addDocumentNonBlocking(collection(firestore, `orders/${selectedChatOrderId}/chatMessages`), {
-      orderId: selectedChatOrderId,
-      authorId: user.uid,
-      content: chatMessageText,
-      timestamp: new Date().toISOString()
-    })
-    setChatMessageText("")
-  }
-
+  // 2. RETORNOS TEMPRANOS: Después de todos los Hooks.
   if (!mounted) return null
   if (isUserLoading || (user && isUserDataLoading)) return <div className="h-screen w-full flex items-center justify-center bg-slate-900 text-white"><Loader2 className="animate-spin" /></div>
   if (!user) return <LoginScreen />
@@ -372,8 +324,6 @@ export default function DashboardPage() {
           center={currentCoords ? [currentCoords.lat, currentCoords.lng] : [19.4326, -99.1332]} 
           destination={destinationCoords}
           alerts={alerts}
-          activeOrders={isAdmin ? bizAllOrders : null}
-          fleet={isAdmin ? fleetData : null}
           heading={heading}
           isNavigating={isNavigating && !!activeOrder}
           centerTrigger={mapCenterTrigger}
@@ -440,7 +390,7 @@ export default function DashboardPage() {
         </Button>
       </div>
 
-      {/* BOTONES DE CONTROL DE MAPA (BOTTOM RIGHT - SOBRE EL PANEL) */}
+      {/* BOTONES DE CONTROL DE MAPA */}
       <div className="absolute right-8 bottom-32 flex flex-col gap-3 z-10">
         <Button size="icon" variant="secondary" onClick={() => setIsNavigating(!isNavigating)} className={cn("h-12 w-12 rounded-full shadow-xl transition-all", isNavigating ? "bg-blue-600 text-white" : "bg-white text-slate-600")}>
           <Navigation className="h-5 w-5" />
@@ -462,7 +412,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* PANEL DESLIZABLE INFERIOR (Z-20) */}
+      {/* PANEL DESLIZABLE INFERIOR */}
       <div className={cn("absolute inset-x-0 bottom-0 bg-white shadow-[0_-20px_50px_rgba(0,0,0,0.1)] rounded-t-[3.5rem] transition-all duration-500 ease-in-out z-20 overflow-hidden flex flex-col", sheetY === '0' ? "top-20" : sheetY === 'calc(100% - 40px)' ? "top-[calc(100%-40px)]" : "top-1/2")}>
         <div className="h-12 w-full flex items-center justify-center cursor-pointer active:bg-slate-50" onClick={() => setIsExpanded(!isExpanded)}>
           <div className={cn("w-16 h-1.5 rounded-full mb-8", hasActiveSOS ? "bg-red-600 animate-pulse" : "bg-slate-200")}></div>
@@ -497,7 +447,7 @@ export default function DashboardPage() {
               </div>
               <div className="space-y-4">
                 {driverActiveOrders?.map((order, i) => (
-                  <DriverOrderCard key={order.id} order={order} index={i} onOpenChat={() => { setSelectedChatOrderId(order.id); setActiveTab('central'); }} />
+                  <DriverOrderCard key={order.id} order={order} index={i} onOpenChat={() => { setSelectedChatOrderId(order.id); setSelectedChatAlertId(null); setActiveTab('central'); }} />
                 ))}
               </div>
             </div>
@@ -529,7 +479,6 @@ export default function DashboardPage() {
                 <h2 className="text-3xl font-black tracking-tighter uppercase">Coro Driver</h2>
               </header>
               
-              {/* SELECTOR DE TIPO DE ALERTA */}
               <div className="flex gap-4 mb-12 overflow-x-auto pb-4 scrollbar-hide">
                 {[
                   { id: "policia", label: "CONTROL", icon: ShieldAlert, bg: "bg-blue-50", color: "text-blue-600" },
@@ -559,10 +508,9 @@ export default function DashboardPage() {
                 ))}
               </div>
 
-              {/* FEED DE ALERTAS */}
               <div className="space-y-4">
                 {alerts?.map((alert) => (
-                  <CoroItem key={alert.id} alert={alert} userId={user.uid} />
+                  <CoroItem key={alert.id} alert={alert} userId={user.uid} onOpenChat={(id) => { setSelectedChatAlertId(id); setSelectedChatOrderId(null); setActiveTab('central'); }} />
                 ))}
               </div>
             </div>
@@ -570,16 +518,19 @@ export default function DashboardPage() {
 
           {activeTab === 'central' && (
              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-left h-full flex flex-col min-h-[500px]">
-                {selectedChatOrderId ? (
+                {(selectedChatOrderId || selectedChatAlertId) ? (
                   <div className="flex flex-col h-full bg-slate-100 rounded-[40px] p-4">
                     <header className="flex items-center gap-4 mb-6 sticky top-0 bg-white p-4 rounded-2xl shadow-sm z-10">
-                      <Button variant="ghost" size="icon" onClick={() => setSelectedChatOrderId(null)} className="rounded-full h-10 w-10"><ChevronLeft className="w-6 h-6" /></Button>
-                      <h2 className="text-[14px] font-black tracking-tight uppercase truncate">Chat Orden #{selectedChatOrderId.substring(0, 5)}</h2>
+                      <Button variant="ghost" size="icon" onClick={() => { setSelectedChatOrderId(null); setSelectedChatAlertId(null); }} className="rounded-full h-10 w-10"><ChevronLeft className="w-6 h-6" /></Button>
+                      <h2 className="text-[14px] font-black tracking-tight uppercase truncate">
+                        {selectedChatOrderId ? `Chat Orden #${selectedChatOrderId.substring(0, 5)}` : `Chat Alerta Comunidad`}
+                      </h2>
                     </header>
                     <div ref={chatScrollRef} className="flex-1 overflow-y-auto space-y-3 px-2 scrollbar-hide mb-4 min-h-[300px]">
-                      {chatMessages?.map((msg) => (
+                      {(selectedChatOrderId ? orderChatMessages : alertChatMessages)?.map((msg) => (
                         <div key={msg.id} className={cn("flex", msg.authorId === user.uid ? 'justify-end' : 'justify-start')}>
                           <div className={cn("max-w-[85%] p-4 rounded-[22px] text-[13px] shadow-sm", msg.authorId === user.uid ? 'bg-slate-900 text-white rounded-tr-none' : 'bg-white text-slate-800 rounded-tl-none')}>
+                            {msg.authorName && msg.authorId !== user.uid && <p className="text-[10px] font-black mb-1 opacity-50">{msg.authorName}</p>}
                             <p className="font-medium leading-relaxed">{msg.content}</p>
                           </div>
                         </div>
@@ -593,8 +544,9 @@ export default function DashboardPage() {
                 ) : (
                   <div className="space-y-4">
                     <h2 className="text-3xl font-black tracking-tighter uppercase mb-6 px-2">Canal de Chat</h2>
+                    <p className="text-xs text-slate-400 px-2 mb-4 font-bold uppercase tracking-widest">Chats de Pedidos</p>
                     {driverActiveOrders?.map(order => (
-                      <Card key={order.id} className="rounded-[40px] border-none shadow-sm bg-slate-50/50 hover:bg-white transition-all cursor-pointer" onClick={() => setSelectedChatOrderId(order.id)}>
+                      <Card key={order.id} className="rounded-[40px] border-none shadow-sm bg-slate-50/50 hover:bg-white transition-all cursor-pointer" onClick={() => { setSelectedChatOrderId(order.id); setSelectedChatAlertId(null); }}>
                         <CardContent className="p-5 flex items-center justify-between">
                           <div className="flex items-center gap-4">
                             <div className="w-12 h-12 rounded-[20px] bg-white flex items-center justify-center border border-slate-100"><MessageSquare className="w-5 h-5 text-primary" /></div>
