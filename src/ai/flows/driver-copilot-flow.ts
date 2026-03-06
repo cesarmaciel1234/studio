@@ -73,6 +73,7 @@ async function toWav(
   sampleWidth = 2
 ): Promise<string> {
   // CARGA DINÁMICA: Evita que NextJS intente empaquetar 'wav' para el cliente
+  // Se usa require dentro de la función de servidor para asegurar que el módulo esté disponible.
   const wav = require('wav');
   return new Promise((resolve, reject) => {
     const writer = new wav.Writer({

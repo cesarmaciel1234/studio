@@ -1,8 +1,9 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Permite lectura y escritura a cualquier usuario autenticado
-    // para facilitar el desarrollo y evitar errores de permisos en perfiles.
+    // Permite lectura y escritura a cualquier usuario autenticado.
+    // Esto es necesario para que tanto conductores como empresas puedan
+    // gestionar sus perfiles y pedidos sin errores de permisos.
     match /{document=**} {
       allow read, write: if request.auth != null;
     }
