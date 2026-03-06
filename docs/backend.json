@@ -1,210 +1,40 @@
-
 {
   "entities": {
     "User": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
+      "description": "Represents a user in the RutaRápida Pro system.",
       "type": "object",
-      "description": "Represents a user in the RutaRápida Pro system, acting as either a driver or an administrator.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the User entity."
-        },
-        "email": {
-          "type": "string",
-          "description": "The user's email address, used for authentication and contact.",
-          "format": "email"
-        },
-        "photoURL": {
-          "type": "string",
-          "description": "URL to the user's profile picture.",
-          "format": "uri"
-        },
-        "firstName": {
-          "type": "string",
-          "description": "The user's first name."
-        },
-        "lastName": {
-          "type": "string",
-          "description": "The user's last name."
-        },
-        "role": {
-          "type": "string",
-          "description": "The role of the user within the system, determining their access and functionality.",
-          "format": "enum",
-          "items": {
-            "type": "string"
-          }
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the user account was created.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the user's profile was last updated.",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "firstName": { "type": "string" },
+        "role": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "email",
-        "firstName",
-        "role",
-        "createdAt",
-        "updatedAt"
-      ]
-    },
-    "DriverProfile": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "DriverProfile",
-      "type": "object",
-      "description": "Contains additional profile information specific to a user with the 'Driver' role.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the DriverProfile entity, which is also the User ID. (Relationship: User 1:1 DriverProfile)"
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to the associated User entity. (Relationship: User 1:1 DriverProfile)"
-        },
-        "vehicleId": {
-          "type": "string",
-          "description": "Reference to the Vehicle currently assigned to this driver. (Relationship: DriverProfile 1:N Vehicle)"
-        },
-        "currentLocationLat": {
-          "type": "number",
-          "description": "The current latitude of the driver's location."
-        },
-        "currentLocationLng": {
-          "type": "number",
-          "description": "The current longitude of the driver's location."
-        },
-        "lastLocationUpdate": {
-          "type": "string",
-          "description": "Timestamp of the last known location update for the driver.",
-          "format": "date-time"
-        },
-        "drivingLicenseNumber": {
-          "type": "string",
-          "description": "The driver's driving license number."
-        },
-        "phoneNumber": {
-          "type": "string",
-          "description": "The driver's contact phone number."
-        },
-        "dateOfBirth": {
-          "type": "string",
-          "description": "The driver's date of birth.",
-          "format": "date"
-        },
-        "address": {
-          "type": "string",
-          "description": "The driver's residential address."
-        }
-      },
-      "required": [
-        "id",
-        "userId",
-        "currentLocationLat",
-        "currentLocationLng",
-        "lastLocationUpdate"
-      ]
+      "required": ["id", "firstName", "role", "createdAt", "updatedAt"]
     },
     "Alert": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Alert",
+      "description": "Community alert about road conditions.",
       "type": "object",
-      "description": "Represents a community or driver-generated alert about road conditions or incidents.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Alert entity."
-        },
-        "type": {
-          "type": "string",
-          "description": "The category or type of the alert (e.g., 'trafico', 'policia', 'sos').",
-          "format": "enum",
-          "items": {
-            "type": "string"
-          }
-        },
-        "label": {
-          "type": "string",
-          "description": "A user-friendly label for the alert type (e.g., 'Tráfico', 'Control')."
-        },
-        "description": {
-          "type": "string",
-          "description": "A detailed description of the alert or incident reported."
-        },
-        "latitude": {
-          "type": "number",
-          "description": "The latitude coordinate of where the alert was reported."
-        },
-        "longitude": {
-          "type": "number",
-          "description": "The longitude coordinate of where the alert was reported."
-        },
-        "authorId": {
-          "type": "string",
-          "description": "Reference to the User ID who created this alert. (Relationship: User 1:N Alert)"
-        },
-        "status": {
-          "type": "string",
-          "description": "The current status of the alert (e.g., 'Active', 'Resolved').",
-          "format": "enum",
-          "items": {
-            "type": "string"
-          }
-        },
-        "likes": {
-          "type": "array",
-          "description": "An array of User IDs who have 'liked' this alert. (Relationship: User N:N Alert)",
-          "items": {
-            "type": "string"
-          }
-        },
-        "participantIds": {
-          "type": "array",
-          "description": "An array of User IDs who are participating in or monitoring this alert. (Relationship: User N:N Alert)",
-          "items": {
-            "type": "string"
-          }
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the alert was created.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the alert was last updated or had activity.",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "type": { "type": "string" },
+        "label": { "type": "string" },
+        "description": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "authorId": { "type": "string" },
+        "status": { "type": "string" },
+        "likes": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "type",
-        "label",
-        "description",
-        "latitude",
-        "longitude",
-        "authorId",
-        "status",
-        "likes",
-        "participantIds",
-        "createdAt",
-        "updatedAt"
-      ]
+      "required": ["id", "type", "label", "description", "latitude", "longitude", "authorId", "status", "createdAt"]
     },
     "AlertMessage": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "AlertMessage",
-      "type": "object",
       "description": "A message sent within a community alert context.",
+      "type": "object",
       "properties": {
         "id": { "type": "string" },
         "authorId": { "type": "string" },
@@ -215,93 +45,38 @@
       "required": ["id", "authorId", "authorName", "content", "timestamp"]
     },
     "Order": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Order",
+      "description": "Represents a delivery request.",
       "type": "object",
-      "description": "Represents a delivery or logistics request that needs to be fulfilled by a driver.",
       "properties": {
-        "id": {
-          "type": "string"
-        },
-        "clientName": {
-          "type": "string"
-        },
-        "pickupAddress": {
-          "type": "string"
-        },
-        "pickupLatitude": {
-          "type": "number"
-        },
-        "pickupLongitude": {
-          "type": "number"
-        },
-        "deliveryAddress": {
-          "type": "string"
-        },
-        "deliveryLatitude": {
-          "type": "number"
-        },
-        "deliveryLongitude": {
-          "type": "number"
-        },
-        "offeredPrice": {
-          "type": "number"
-        },
-        "packageDescription": {
-          "type": "string"
-        },
-        "status": {
-          "type": "string",
-          "format": "enum"
-        },
-        "driverId": {
-          "type": "string"
-        },
-        "companyId": {
-          "type": "string"
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "clientName": { "type": "string" },
+        "deliveryAddress": { "type": "string" },
+        "status": { "type": "string" },
+        "driverId": { "type": "string" }
       },
-      "required": [
-        "id",
-        "clientName",
-        "pickupAddress",
-        "deliveryAddress",
-        "offeredPrice",
-        "status",
-        "createdAt",
-        "updatedAt"
-      ]
+      "required": ["id", "clientName", "deliveryAddress", "status"]
     }
   },
   "auth": {
-    "providers": [
-      "anonymous"
-    ]
+    "providers": ["anonymous"]
   },
   "firestore": {
     "/users/{userId}": {
       "schema": "User",
-      "description": "Stores user profiles."
+      "description": "User profiles."
     },
     "/alerts/{alertId}": {
       "schema": "Alert",
-      "description": "Stores community alerts."
+      "description": "Community alerts."
     },
     "/alerts/{alertId}/messages/{messageId}": {
       "schema": "AlertMessage",
-      "description": "Stores messages related to a specific community alert."
+      "description": "Messages for an alert."
     },
     "/orders/{orderId}": {
       "schema": "Order",
-      "description": "Stores delivery orders."
+      "description": "Delivery orders."
     }
   }
 }

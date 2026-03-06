@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -96,9 +95,6 @@ const InteractiveMap = dynamic(() => import('@/components/dashboard/InteractiveM
   </div>
 });
 
-/**
- * Componente para renderizar una alerta en el feed comunitario (Coro Driver).
- */
 const CoroItem = ({ alert, userId, onOpenChat }: { alert: any, userId: string, onOpenChat: (id: string) => void }) => {
   const Icon = alert.type === 'policia' ? ShieldAlert : 
                alert.type === 'trafico' ? Clock : 
@@ -175,17 +171,19 @@ const LoginScreen = () => (
        <h1 className="text-4xl font-black text-white tracking-tighter">RutaRápida Pro</h1>
        <p className="text-blue-500 font-bold text-xs uppercase tracking-[0.3em]">Logística Inteligente</p>
      </div>
-     <Button className="w-full max-w-xs h-16 rounded-3xl bg-white text-slate-900 font-black text-lg" onClick={() => window.location.href = '/login'}>EMPEZAR SESIÓN</Button>
+     <Button className="w-full max-w-xs h-16 rounded-3xl bg-white text-slate-900 font-black text-lg" asChild>
+       <Link href="/login">EMPEZAR SESIÓN</Link>
+     </Button>
   </div>
 )
 
 export default function DashboardPage() {
+  // --- 1. HOOKS PRIMERO ---
   const router = useRouter()
   const { firestore, auth } = useFirebase()
   const { user, isUserLoading } = useUser()
   const { toast } = useToast()
 
-  // 1. REGLA DE HOOKS: Todos los hooks deben ir al principio, sin retornos condicionales previos.
   const [activeTab, setActiveTab] = useState('ruta')
   const [isExpanded, setIsExpanded] = useState(false)
   const [isMapFullscreen, setIsMapFullscreen] = useState(false)
@@ -224,7 +222,6 @@ export default function DashboardPage() {
 
   const hasActiveSOS = useMemo(() => alerts?.some(a => a.type === 'sos') || false, [alerts])
   const activeOrder = useMemo(() => driverActiveOrders?.[0], [driverActiveOrders])
-  const isAdmin = userData?.role === 'Admin'
 
   useEffect(() => {
     setMounted(true)
@@ -255,10 +252,7 @@ export default function DashboardPage() {
     }
   }, [selectedChatOrderId, selectedChatAlertId, chatMessageText])
 
-  /**
-   * FLUJO: CORO DRIVER - Publicación de Alertas Comunitarias
-   */
-  const handlePublishAlert = () => {
+  const handlePublishAlert = useCallback(() => {
     if (!selectedAlertType || !user?.uid || !firestore || !currentCoords) return
     addDocumentNonBlocking(collection(firestore, "alerts"), {
       type: selectedAlertType.id,
@@ -276,9 +270,9 @@ export default function DashboardPage() {
     setAlertDescription("")
     setSelectedAlertType(null)
     toast({ title: "Reporte Vial Publicado" })
-  }
+  }, [selectedAlertType, user?.uid, firestore, currentCoords, alertDescription, toast])
 
-  const handleSendChatMessage = () => {
+  const handleSendChatMessage = useCallback(() => {
     if (!chatMessageText.trim() || !user?.uid || !firestore) return
     
     if (selectedChatOrderId) {
@@ -297,9 +291,9 @@ export default function DashboardPage() {
       })
     }
     setChatMessageText("")
-  }
+  }, [chatMessageText, user?.uid, firestore, selectedChatOrderId, selectedChatAlertId, userData?.firstName])
 
-  const handleAcceptOrder = (orderId: string) => {
+  const handleAcceptOrder = useCallback((orderId: string) => {
     if (!user?.uid || !firestore) return
     updateDocumentNonBlocking(doc(firestore, "orders", orderId), { 
       driverId: user.uid, 
@@ -307,9 +301,9 @@ export default function DashboardPage() {
       updatedAt: new Date().toISOString() 
     })
     toast({ title: "Pedido Asignado" })
-  }
+  }, [user?.uid, firestore, toast])
 
-  // 2. RETORNOS TEMPRANOS: Después de todos los Hooks.
+  // --- 2. RETORNOS CONDICIONALES ---
   if (!mounted) return null
   if (isUserLoading || (user && isUserDataLoading)) return <div className="h-screen w-full flex items-center justify-center bg-slate-900 text-white"><Loader2 className="animate-spin" /></div>
   if (!user) return <LoginScreen />
