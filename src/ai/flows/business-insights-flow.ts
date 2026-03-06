@@ -60,7 +60,7 @@ async function toWav(
   rate = 24000,
   sampleWidth = 2
 ): Promise<string> {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  // Carga dinámica de wav para evitar errores de compilación en el servidor de Next.js
   const wav = require('wav');
   return new Promise((resolve, reject) => {
     const writer = new wav.Writer({
