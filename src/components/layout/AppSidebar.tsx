@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/sidebar"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { useUser, useDoc, useMemoFirebase, useFirebase } from "@/firebase"
 import { doc } from "firebase/firestore"
