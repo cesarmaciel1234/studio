@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useState, useMemo, useCallback, useEffect, useRef } from "react"
+import { useState, useMemo, useCallback, useEffect } from "react"
 import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { 
@@ -45,7 +45,6 @@ import {
   Users
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useSidebar } from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -74,7 +73,6 @@ import Link from "next/link"
 
 import { 
   useFirebase, 
-  useFirestore, 
   useUser, 
   useCollection, 
   useDoc, 
@@ -83,7 +81,7 @@ import {
   updateDocumentNonBlocking,
   deleteDocumentNonBlocking
 } from "@/firebase"
-import { collection, doc, query, where, orderBy, serverTimestamp } from "firebase/firestore"
+import { collection, doc, query, where, orderBy } from "firebase/firestore"
 import { signOut } from "firebase/auth"
 import { useToast } from "@/hooks/use-toast"
 import { format } from "date-fns"
@@ -98,7 +96,7 @@ const InteractiveMap = dynamic(() => import('@/components/dashboard/InteractiveM
 });
 
 // Componentes auxiliares locales
-const CoroItem = ({ alert, userId }: { alert: any, userId: string }) => {
+const CoroItem = ({ alert }: { alert: any, userId: string }) => {
   return (
     <div className="flex items-center gap-5 p-5 bg-white rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-all">
       <div className={cn("h-14 w-14 rounded-2xl flex items-center justify-center shrink-0", 
@@ -119,7 +117,7 @@ const CoroItem = ({ alert, userId }: { alert: any, userId: string }) => {
   )
 }
 
-const DriverOrderCard = ({ order, index, currentCoords, onOpenChat }: any) => {
+const DriverOrderCard = ({ order, index, onOpenChat }: any) => {
   return (
     <Card className="rounded-[32px] border-none shadow-lg bg-white overflow-hidden">
       <div className="p-6 flex items-center gap-4">
@@ -206,7 +204,6 @@ export default function DashboardPage() {
   // Estados de Negocio
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([])
   const [isCreatingOrder, setIsCreatingOrder] = useState(false)
-  const [isAlertMenuOpen, setIsAlertMenuOpen] = useState(false)
   const [alertDescription, setAlertDescription] = useState("")
   const [selectedAlertType, setSelectedAlertType] = useState<{id: string, label: string} | null>(null)
   const [selectedChatOrderId, setSelectedChatOrderId] = useState<string | null>(null)
@@ -238,7 +235,7 @@ export default function DashboardPage() {
     }
   }, [])
 
-  // Firebase Data Queries
+  // Firebase Data Queries - Solo si el usuario está autenticado
   const userRef = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
     return doc(firestore, "users", user.uid);
@@ -273,7 +270,7 @@ export default function DashboardPage() {
     return query(collection(firestore, "orders"), where("companyId", "==", user.uid));
   }, [isAdmin, user?.uid, firestore])
   
-  const { data: bizAllOrders, isLoading: isLoadingBizOrders } = useCollection(bizOrdersQuery)
+  const { data: bizAllOrders } = useCollection(bizOrdersQuery)
 
   const fleetQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid || !isAdmin) return null;
@@ -343,7 +340,7 @@ export default function DashboardPage() {
       updatedAt: new Date().toISOString(),
       status: "Active"
     })
-    setIsAlertMenuOpen(false); setAlertDescription(""); setSelectedAlertType(null);
+    setAlertDescription(""); setSelectedAlertType(null);
     toast({ title: "Reporte Vial Publicado" })
   }
 
@@ -515,7 +512,7 @@ export default function DashboardPage() {
               </div>
               <div className="space-y-4">
                 {driverActiveOrders?.map((order, i) => (
-                  <DriverOrderCard key={order.id} order={order} index={i} currentCoords={currentCoords} onOpenChat={() => { setSelectedChatOrderId(order.id); setActiveTab('central'); }} />
+                  <DriverOrderCard key={order.id} order={order} index={i} onOpenChat={() => { setSelectedChatOrderId(order.id); setActiveTab('central'); }} />
                 ))}
               </div>
             </div>

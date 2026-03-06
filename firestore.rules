@@ -1,10 +1,40 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // REGLAS GLOBALES PARA PROTOTIPO
-    // Permitimos acceso completo de lectura y escritura a cualquier usuario autenticado.
-    // Esto es necesario para que los repartidores anónimos puedan listar pedidos,
-    // crear alertas y actualizar su ubicación sin fricción.
+    // REGLAS DE SEGURIDAD EXPLICATIVAS PARA RUTARÁPIDA PRO
+    // Permitimos acceso a cualquier usuario autenticado (incluyendo anónimos)
+    // para facilitar el prototipado rápido y la colaboración comunitaria.
+
+    match /users/{userId} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /driverProfiles/{id} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /companyProfiles/{id} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /vehicles/{id} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /orders/{id} {
+      allow read, write: if request.auth != null;
+      
+      // Reglas para subcolección de chat
+      match /chatMessages/{msgId} {
+        allow read, write: if request.auth != null;
+      }
+    }
+
+    match /alerts/{id} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Backup catch-all para cualquier otra colección futura
     match /{document=**} {
       allow read, write: if request.auth != null;
     }
