@@ -2,28 +2,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * RUTA RÁPIDA PRO SECURITY RULES
-     * 
-     * Core Philosophy: This ruleset enforces a strict identity-based access model, utilizing denormalized 
-     * ownership fields to ensure high performance and authorization independence. Access is granted 
-     * based on a user's role (Driver vs. Admin/Company) and their direct relationship to specific 
-     * resources (Orders, Alerts, Profiles).
-     * 
-     * Data Structure: 
-     * - User-centric data (Profiles) is managed via path-based ownership.
-     * - Collaborative data (Orders, ChatMessages) uses denormalized participant IDs (companyId, driverId).
-     * - Community data (Alerts) allows authenticated global reads with owner-only modifications.
-     * 
-     * Key Security Decisions:
-     * 1. Authorization Independence: Critical IDs (like orderCompanyId) are stored directly on child 
-     *    documents to avoid costly get() calls during rule evaluation.
-     * 2. Prototyping Flexibility: Schema validation is ignored for content fields, but strictly 
-     *    enforced for relational fields (IDs) to maintain system integrity.
-     * 3. Role-Based Access: Logic distinguishes between logistics companies (Admins) and 
-     *    delivery personnel (Drivers) primarily through document-level ownership.
-     */
-
     // --- GLOBAL HELPER FUNCTIONS ---
 
     function isSignedIn() {
@@ -34,103 +12,60 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isExistingOwner(userId) {
-      return resource != null && isOwner(userId);
-    }
-
     // --- COLLECTION RULES ---
 
     /**
-     * @description Rules for the core User documents.
-     * @path /users/{userId}
-     * @allow get, list: If the user is signed in. (Needed for fleet management visibility).
-     * @principle Path-based ownership for profile management and self-creation.
+     * @description Reglas para usuarios.
+     * Permitimos lectura general para facilitar la visibilidad de la flota.
      */
     match /users/{userId} {
-      allow get, list: if isSignedIn();
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if false; 
+      allow read: if isSignedIn();
+      allow create, update: if isOwner(userId);
     }
 
     /**
-     * @description Specific profile details for Drivers.
-     * @path /driverProfiles/{driverId}
-     * @allow get, list: Any signed-in user.
+     * @description Perfiles de conductores y empresas.
      */
     match /driverProfiles/{driverId} {
-      allow get, list: if isSignedIn();
-      allow create: if isOwner(driverId);
-      allow update: if isExistingOwner(driverId);
-      allow delete: if false;
+      allow read: if isSignedIn();
+      allow write: if isOwner(driverId);
     }
 
-    /**
-     * @description Profile details for Logistics Companies (Admins).
-     * @path /companyProfiles/{companyId}
-     * @allow get, list: Any signed-in user.
-     */
     match /companyProfiles/{companyId} {
-      allow get, list: if isSignedIn();
-      allow create: if isOwner(companyId);
-      allow update: if isExistingOwner(companyId);
-      allow delete: if false;
+      allow read: if isSignedIn();
+      allow write: if isOwner(companyId);
     }
 
     /**
-     * @description Fleet management for logistics vehicles.
-     * @path /vehicles/{vehicleId}
-     */
-    match /vehicles/{vehicleId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.companyId == request.auth.uid;
-      allow update: if resource != null && (resource.data.companyId == request.auth.uid || resource.data.currentDriverId == request.auth.uid);
-      allow delete: if resource != null && resource.data.companyId == request.auth.uid;
-    }
-
-    /**
-     * @description Core logistics orders.
-     * @path /orders/{orderId}
-     * @allow read: If signed in (needed for drivers to find pending orders).
+     * @description Pedidos logísticos.
+     * Todos los conductores deben poder LISTAR pedidos para aceptarlos.
      */
     match /orders/{orderId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.companyId == request.auth.uid;
-      allow update: if resource != null && (
-        resource.data.companyId == request.auth.uid || 
-        resource.data.driverId == null || 
-        resource.data.driverId == request.auth.uid
-      );
-      allow delete: if resource != null && resource.data.companyId == request.auth.uid;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn(); 
+      allow delete: if isSignedIn();
 
-      /**
-       * @description Chat messages related to an order.
-       */
       match /chatMessages/{messageId} {
-        allow get, list: if isSignedIn() && (
-          request.auth.uid == resource.data.orderCompanyId || 
-          request.auth.uid == resource.data.orderDriverId
-        );
-        allow create: if isSignedIn() && (
-          request.resource.data.orderCompanyId == request.auth.uid || 
-          request.resource.data.orderDriverId == request.auth.uid
-        );
-        allow update, delete: if false;
+        allow read, write: if isSignedIn();
       }
     }
 
     /**
-     * @description Community-driven road alerts.
+     * @description Alertas viales (Coro Driver).
      */
     match /alerts/{alertId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
-      allow update: if resource != null && (
-        resource.data.authorId == request.auth.uid || 
-        request.auth.uid in request.resource.data.participantIds ||
-        request.resource.data.likes.size() != resource.data.likes.size()
-      );
-      allow delete: if resource != null && resource.data.authorId == request.auth.uid;
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn();
+    }
+
+    /**
+     * @description Vehículos.
+     */
+    match /vehicles/{vehicleId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
   }
 }

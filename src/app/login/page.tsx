@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -19,7 +18,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = React.useState(false)
   const [mounted, setMounted] = React.useState(false)
 
-  // Prevenir errores de hidratación asegurando que el renderizado coincida entre servidor y cliente
   React.useEffect(() => {
     setMounted(true)
   }, [])
@@ -30,33 +28,28 @@ export default function LoginPage() {
 
     setIsLoading(true)
     try {
-      // 1. Inicio de sesión anónimo
       const userCredential = await signInAnonymously(auth)
       const user = userCredential.user
 
-      // 2. Crear perfil de usuario básico en Firestore
       await setDoc(doc(firestore, "users", user.uid), {
         id: user.uid,
         firstName: name.trim(),
-        lastName: "",
-        email: "",
         role: "Driver",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       })
 
-      // 3. Crear perfil de conductor por defecto
       await setDoc(doc(firestore, "driverProfiles", user.uid), {
         id: user.uid,
         userId: user.uid,
-        currentLocationLat: 19.4326, // CDMX default
+        firstName: name.trim(),
+        currentLocationLat: 19.4326,
         currentLocationLng: -99.1332,
         lastLocationUpdate: serverTimestamp()
       })
 
       toast({
         title: "¡Bienvenido, " + name + "!",
-        description: "Iniciando sesión en RutaRápida Pro."
       })
 
       router.push("/dashboard")
@@ -64,52 +57,35 @@ export default function LoginPage() {
       console.error(error)
       toast({
         title: "Error al iniciar sesión",
-        description: "No pudimos conectar con el servidor. Inténtalo de nuevo.",
         variant: "destructive"
       })
       setIsLoading(false)
     }
   }
 
-  // Mientras no esté montado, retornamos un contenedor vacío para evitar el mismatch de hidratación
-  if (!mounted) {
-    return <div className="min-h-screen bg-[#0f172a]" />
-  }
+  if (!mounted) return null
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#0f172a] p-4 font-body">
-      <div className="w-full max-w-[400px] space-y-12 flex flex-col items-center">
-        
-        {/* Logo Container */}
+    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 p-4" suppressHydrationWarning>
+      <div className="w-full max-w-[400px] space-y-12">
         <div className="flex flex-col items-center space-y-6">
-          <div className="h-24 w-24 rounded-full bg-[#1e293b] border-4 border-[#2563eb]/20 flex items-center justify-center shadow-2xl">
-            <div className="h-16 w-16 rounded-full bg-[#2563eb]/10 flex items-center justify-center text-[#2563eb]">
-              <Truck className="h-10 w-10" />
-            </div>
+          <div className="h-24 w-24 rounded-full bg-slate-800 flex items-center justify-center border-4 border-blue-500/20 shadow-2xl">
+            <Truck className="h-12 w-12 text-blue-500" />
           </div>
-          
-          <div className="text-center space-y-1">
-            <h1 className="text-5xl font-extrabold tracking-tighter text-white font-headline">
-              RutaRápida
-            </h1>
-            <p className="text-[10px] font-bold tracking-[0.3em] text-[#3b82f6] uppercase">
-              IA Neuronal V15.0
-            </p>
+          <div className="text-center">
+            <h1 className="text-5xl font-black tracking-tighter text-white uppercase">RutaRápida</h1>
+            <p className="text-blue-500 font-black text-[10px] tracking-[0.3em] uppercase">IA Neuronal V15</p>
           </div>
         </div>
 
-        {/* Login Form */}
-        <form onSubmit={handleLogin} className="w-full space-y-6">
-          <div className="relative group">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#3b82f6] transition-colors">
-              <UserIcon className="h-5 w-5" />
-            </div>
+        <form onSubmit={handleLogin} className="space-y-6">
+          <div className="relative">
+            <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
             <Input
-              type="text"
-              placeholder="Tu Nombre de Repartidor..."
+              placeholder="Tu Nombre..."
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full h-16 pl-12 bg-[#1e293b]/50 border-2 border-slate-700 rounded-2xl text-white placeholder:text-slate-500 focus:border-[#3b82f6] focus:ring-0 transition-all text-lg"
+              className="h-16 pl-12 bg-slate-800/50 border-slate-700 text-white rounded-2xl text-lg"
               required
               disabled={isLoading}
             />
@@ -118,18 +94,10 @@ export default function LoginPage() {
           <Button 
             type="submit"
             disabled={isLoading || !name.trim()}
-            className="w-full h-16 bg-white hover:bg-slate-100 text-[#0f172a] font-black text-lg rounded-2xl shadow-xl transition-transform active:scale-[0.98]"
+            className="w-full h-16 bg-white text-slate-900 font-black text-lg rounded-2xl shadow-xl active:scale-95 transition-transform"
           >
-            {isLoading ? (
-              <Loader2 className="h-6 w-6 animate-spin" />
-            ) : (
-              "ENTRAR AHORA"
-            )}
+            {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : "ENTRAR AHORA"}
           </Button>
-
-          <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest text-center">
-            Acceso instantáneo sin contraseña
-          </p>
         </form>
       </div>
     </div>
