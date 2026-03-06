@@ -223,7 +223,7 @@ export default function DashboardPage() {
 
   const hasActiveSOS = useMemo(() => alerts?.some(a => a.type === 'sos') || false, [alerts])
   const activeOrder = useMemo(() => driverActiveOrders?.[0], [driverActiveOrders])
-  const sheetY = useMemo(() => isMapFullscreen ? 'calc(100% - 40px)' : (isExpanded ? '0' : 'calc(100% - 160px)'), [isMapFullscreen, isExpanded])
+  const sheetY = isMapFullscreen ? 'calc(100% - 40px)' : (isExpanded ? '0' : 'calc(100% - 160px)')
 
   useEffect(() => {
     setMounted(true)
