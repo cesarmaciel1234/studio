@@ -36,7 +36,8 @@ import {
   Sparkles,
   X,
   User,
-  ArrowLeft
+  ArrowLeft,
+  LayoutDashboard
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -557,7 +558,7 @@ export default function DashboardPage() {
 
       {/* SLIDING BOTTOM PANEL */}
       <div className={cn("absolute inset-x-0 bottom-0 bg-white shadow-[0_-20px_50px_rgba(0,0,0,0.1)] rounded-t-[4rem] transition-all duration-500 ease-in-out z-20 overflow-hidden flex flex-col", isExpanded ? "top-20" : "top-1/2")}>
-        {/* DRAG HANDLE - MOVED TO TOP OF TOOLBAR */}
+        {/* DRAG HANDLE */}
         <div className="h-12 w-full flex items-center justify-center cursor-pointer active:bg-slate-50 shrink-0" onClick={() => setIsExpanded(!isExpanded)}>
           <div className={cn("w-16 h-1.5 rounded-full", hasActiveSOS ? "bg-red-600 animate-pulse" : "bg-slate-200")}></div>
         </div>
@@ -586,6 +587,18 @@ export default function DashboardPage() {
               )}
             >
               <Layers className="h-5 w-5" />
+            </Button>
+
+            {/* BOTÓN PARA MENSAJERÍA CENTRAL (HISTORIAL) */}
+            <Button 
+              variant="ghost" 
+              onClick={() => { setActiveTab("central"); setIsExpanded(false); }} 
+              className={cn(
+                "h-12 w-12 rounded-full p-0 flex items-center justify-center transition-all duration-300", 
+                activeTab === "central" ? "bg-white text-slate-900" : "text-slate-400"
+              )}
+            >
+              <LayoutDashboard className="h-5 w-5" />
             </Button>
 
             {/* ONLY SHOW CHAT FOR ACTIVE ORDERS - PRIVATE COMPANY-DRIVER CHAT */}
