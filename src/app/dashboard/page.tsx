@@ -557,7 +557,12 @@ export default function DashboardPage() {
 
       {/* SLIDING BOTTOM PANEL */}
       <div className={cn("absolute inset-x-0 bottom-0 bg-white shadow-[0_-20px_50px_rgba(0,0,0,0.1)] rounded-t-[4rem] transition-all duration-500 ease-in-out z-20 overflow-hidden flex flex-col", isExpanded ? "top-20" : "top-1/2")}>
-        {/* DRAG HANDLE & TOOLBAR */}
+        {/* DRAG HANDLE - MOVED TO TOP OF TOOLBAR */}
+        <div className="h-12 w-full flex items-center justify-center cursor-pointer active:bg-slate-50 shrink-0" onClick={() => setIsExpanded(!isExpanded)}>
+          <div className={cn("w-16 h-1.5 rounded-full", hasActiveSOS ? "bg-red-600 animate-pulse" : "bg-slate-200")}></div>
+        </div>
+
+        {/* TOOLBAR / NAVIGATION BAR */}
         <div className="h-16 w-full flex items-center justify-center bg-white border-b border-slate-50">
           <div className="bg-slate-900 p-2 rounded-[2.5rem] flex items-center gap-2 shadow-2xl pointer-events-auto scale-90">
             <Button 
@@ -583,7 +588,7 @@ export default function DashboardPage() {
               <Layers className="h-5 w-5" />
             </Button>
 
-            {/* ONLY SHOW CHAT FOR ACTIVE ORDERS */}
+            {/* ONLY SHOW CHAT FOR ACTIVE ORDERS - PRIVATE COMPANY-DRIVER CHAT */}
             {activeOrder && (
               <Button 
                 variant="ghost" 
@@ -608,10 +613,6 @@ export default function DashboardPage() {
               <ShieldAlert className="h-5 w-5" />
             </Button>
           </div>
-        </div>
-
-        <div className="h-12 w-full flex items-center justify-center cursor-pointer active:bg-slate-50 shrink-0" onClick={() => setIsExpanded(!isExpanded)}>
-          <div className={cn("w-16 h-1.5 rounded-full", hasActiveSOS ? "bg-red-600 animate-pulse" : "bg-slate-200")}></div>
         </div>
         
         <div className="flex-1 overflow-y-auto px-8 pb-20 scrollbar-hide">
