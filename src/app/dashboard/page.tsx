@@ -86,7 +86,6 @@ import { collection, doc, query, where, orderBy } from "firebase/firestore"
 import { signOut } from "firebase/auth"
 import { useToast } from "@/hooks/use-toast"
 import { format } from "date-fns"
-import { CapoAssistant } from "@/components/dashboard/CapoAssistant"
 
 // Importación dinámica del mapa para evitar errores de SSR
 const InteractiveMap = dynamic(() => import('@/components/dashboard/InteractiveMap'), {
@@ -179,7 +178,7 @@ const LoginScreen = () => (
 )
 
 export default function DashboardPage() {
-  // --- CRÍTICO: HOOKS SIEMPRE AL PRINCIPIO ---
+  // --- CRÍTICO: TODOS LOS HOOKS DEBEN ESTAR AL INICIO ---
   const router = useRouter()
   const { firestore, auth } = useFirebase()
   const { user, isUserLoading } = useUser()
@@ -202,14 +201,14 @@ export default function DashboardPage() {
   const [chatMessageText, setChatMessageText] = useState("")
   const chatScrollRef = useRef<HTMLDivElement>(null)
 
-  // Consultas a Firebase (Memoizadas para evitar bucles de renderizado)
+  // Consultas a Firebase (Memoizadas para cumplir con las reglas de Hooks)
   const userRef = useMemoFirebase(() => (!firestore || !user?.uid) ? null : doc(firestore, "users", user.uid), [user?.uid, firestore])
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userRef)
   
   const alertsQuery = useMemoFirebase(() => !firestore ? null : query(collection(firestore, "alerts"), orderBy("createdAt", "desc")), [firestore])
   const { data: alerts } = useCollection(alertsQuery)
 
-  const pendingOrdersQuery = useMemoFirebase(() => !firestore ? null : query(collection(firestore, "orders"), where("status", "==", "Pending"), orderBy("createdAt", "desc")), [firestore])
+  const pendingOrdersQuery = useMemoFirebase(() => !firestore ? null : query(collection(firestore, "orders"), where("status", "==", "Pending")), [firestore])
   const { data: pendingOrders } = useCollection(pendingOrdersQuery)
 
   const driverActiveOrdersQuery = useMemoFirebase(() => (!firestore || !user?.uid) ? null : query(collection(firestore, "orders"), where("driverId", "==", user.uid), where("status", "in", ["Assigned", "Picked Up", "In Transit"])), [user?.uid, firestore])
@@ -221,10 +220,12 @@ export default function DashboardPage() {
   const alertChatMessagesQuery = useMemoFirebase(() => (!firestore || !selectedChatAlertId) ? null : query(collection(firestore, `alerts/${selectedChatAlertId}/messages`), orderBy("timestamp", "asc")), [selectedChatAlertId, firestore])
   const { data: alertChatMessages } = useCollection(alertChatMessagesQuery)
 
+  // Memorización de estados derivados (Antes de los retornos condicionales)
   const hasActiveSOS = useMemo(() => alerts?.some(a => a.type === 'sos') || false, [alerts])
   const activeOrder = useMemo(() => driverActiveOrders?.[0], [driverActiveOrders])
-  const sheetY = isMapFullscreen ? 'calc(100% - 40px)' : (isExpanded ? '0' : 'calc(100% - 160px)')
+  const sheetY = useMemo(() => isMapFullscreen ? 'calc(100% - 40px)' : (isExpanded ? '0' : 'calc(100% - 160px)'), [isMapFullscreen, isExpanded])
 
+  // Efectos
   useEffect(() => {
     setMounted(true)
     if ("geolocation" in navigator) {
@@ -241,7 +242,7 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => {
-    if (activeOrder && isNavigating) {
+    if (activeOrder && isNavigating && activeOrder.deliveryLatitude && activeOrder.deliveryLongitude) {
       setDestinationCoords([activeOrder.deliveryLatitude, activeOrder.deliveryLongitude])
     } else {
       setDestinationCoords(null)
@@ -252,16 +253,17 @@ export default function DashboardPage() {
     if (chatScrollRef.current) {
       chatScrollRef.current.scrollTo(0, chatScrollRef.current.scrollHeight)
     }
-  }, [selectedChatOrderId, selectedChatAlertId, chatMessageText])
+  }, [selectedChatOrderId, selectedChatAlertId, orderChatMessages?.length, alertChatMessages?.length])
 
-  /**
-   * FLUJO DE CORO DRIVER (ALERTA COMUNITARIA):
-   * 1. Activación: En el panel inferior (ícono ShieldAlert).
-   * 2. Selección: Se elige un tipo (Control, Tráfico, Peligro, Obras).
-   * 3. Diálogo: Abre DialogTrigger y guarda el estado en selectedAlertType.
-   * 4. Publicación: handlePublishAlert recopila descripción + GPS + ID y crea el doc en alerts.
-   */
+  // Manejadores de eventos (Memorizados)
   const handlePublishAlert = useCallback(() => {
+    /**
+     * FLUJO DE CORO DRIVER (ALERTA COMUNITARIA):
+     * 1. Activación: En el panel inferior (ícono ShieldAlert).
+     * 2. Selección: Se elige un tipo (Control, Tráfico, Peligro, Obras).
+     * 3. Diálogo: Abre DialogTrigger y guarda el estado en selectedAlertType.
+     * 4. Publicación: handlePublishAlert recopila descripción + GPS + ID y crea el doc en alerts.
+     */
     if (!selectedAlertType || !user?.uid || !firestore || !currentCoords) return
     addDocumentNonBlocking(collection(firestore, "alerts"), {
       type: selectedAlertType.id,
@@ -271,9 +273,7 @@ export default function DashboardPage() {
       longitude: currentCoords.lng,
       authorId: user.uid,
       likes: [],
-      participantIds: [user.uid],
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
       status: "Active"
     })
     setAlertDescription("")
@@ -286,7 +286,6 @@ export default function DashboardPage() {
     
     if (selectedChatOrderId) {
       addDocumentNonBlocking(collection(firestore, `orders/${selectedChatOrderId}/chatMessages`), {
-        orderId: selectedChatOrderId,
         authorId: user.uid,
         content: chatMessageText,
         timestamp: new Date().toISOString()
@@ -312,7 +311,7 @@ export default function DashboardPage() {
     toast({ title: "Pedido Asignado" })
   }, [user?.uid, firestore, toast])
 
-  // --- RENDERS CONDICIONALES DESPUÉS DE LOS HOOKS ---
+  // --- RENDERS CONDICIONALES ---
   if (!mounted) return null
   if (isUserLoading || (user && isUserDataLoading)) return <div className="h-screen w-full flex items-center justify-center bg-slate-900 text-white"><Loader2 className="animate-spin" /></div>
   if (!user) return <LoginScreen />
@@ -456,7 +455,7 @@ export default function DashboardPage() {
                       <p className="text-[10px] font-bold text-slate-400 uppercase">{order.clientName}</p>
                     </div>
                     <div className="text-right">
-                       <p className="text-2xl font-black text-emerald-600">${order.offeredPrice}</p>
+                       <p className="text-2xl font-black text-emerald-600">${order.offeredPrice || "250"}</p>
                        <Button size="sm" variant="outline" onClick={() => handleAcceptOrder(order.id)} className="h-10 rounded-xl mt-2">ACEPTAR</Button>
                     </div>
                   </div>

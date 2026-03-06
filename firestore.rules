@@ -2,13 +2,13 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Permite lectura y escritura a cualquier usuario autenticado en todas las colecciones.
-    // Esto asegura que los conductores anónimos puedan listar pedidos, alertas y mensajes.
+    // Reglas universales para usuarios autenticados (incluyendo anónimos)
+    // Se permite lectura y escritura en todas las colecciones para facilitar el flujo de la MVP.
     match /{document=**} {
       allow read, write: if request.auth != null;
     }
     
-    // Reglas explícitas para mayor seguridad y claridad en el depurador
+    // Reglas explícitas para colecciones principales para asegurar el listado (list)
     match /users/{userId} {
       allow read, write: if request.auth != null;
     }
