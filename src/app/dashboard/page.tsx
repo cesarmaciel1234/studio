@@ -7,8 +7,6 @@ import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { 
   Navigation, 
-  Maximize, 
-  Minimize,
   Truck,
   Layers,
   MessageSquare,
@@ -21,40 +19,20 @@ import {
   ChevronLeft,
   Flame,
   MapPin,
-  Target,
-  Sparkles,
-  Building2,
-  Pencil,
-  BarChart3,
-  LogOut,
-  TrendingUp,
   DollarSign,
-  Map,
-  RefreshCcw,
+  TrendingUp,
+  LogOut,
   Store,
-  CheckCircle2,
-  Check,
-  ShieldCheck,
-  Trash2,
   Loader2,
   Send,
-  Mic,
-  X,
-  LayoutDashboard,
-  PlusCircle,
-  Leaf,
-  Users,
-  Heart,
-  Boxes,
   Phone,
-  TrendingDown
+  Heart,
+  Boxes
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
@@ -66,13 +44,7 @@ import {
   DialogTrigger,
   DialogFooter
 } from "@/components/ui/dialog"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import Image from "next/image"
 import Link from "next/link"
 
 import { 
@@ -82,8 +54,7 @@ import {
   useDoc, 
   useMemoFirebase,
   addDocumentNonBlocking,
-  updateDocumentNonBlocking,
-  deleteDocumentNonBlocking
+  updateDocumentNonBlocking
 } from "@/firebase"
 import { collection, doc, query, where, orderBy } from "firebase/firestore"
 import { signOut } from "firebase/auth"
@@ -253,7 +224,7 @@ export default function DashboardPage() {
   const [chatMessageText, setChatMessageText] = useState("")
   const chatScrollRef = useRef<HTMLDivElement>(null)
 
-  // Memoización de Consultas a Firebase (HOOKS SIEMPRE AL INICIO)
+  // Memoización de Consultas (HOOKS SIEMPRE AL INICIO)
   const userRef = useMemoFirebase(() => (!firestore || !user?.uid) ? null : doc(firestore, "users", user.uid), [user?.uid, firestore])
   const alertsQuery = useMemoFirebase(() => !firestore ? null : query(collection(firestore, "alerts"), orderBy("createdAt", "desc")), [firestore])
   const pendingOrdersQuery = useMemoFirebase(() => !firestore ? null : query(collection(firestore, "orders"), where("status", "==", "Pending")), [firestore])
@@ -303,7 +274,7 @@ export default function DashboardPage() {
     }
   }, [selectedChatOrderId, selectedChatAlertId, orderChatMessages?.length, alertChatMessages?.length])
 
-  // Manejadores de eventos
+  // Manejadores
   const handlePublishAlert = useCallback(() => {
     if (!selectedAlertType || !user?.uid || !firestore || !currentCoords) return
     addDocumentNonBlocking(collection(firestore, "alerts"), {
@@ -357,7 +328,6 @@ export default function DashboardPage() {
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-slate-50">
-      {/* MAPA INTERACTIVO */}
       <div className="absolute inset-0 z-0">
         <InteractiveMap 
           center={currentCoords ? [currentCoords.lat, currentCoords.lng] : [19.4326, -99.1332]} 
@@ -370,7 +340,6 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* BOTÓN MENÚ LATERAL */}
       <div className="absolute top-8 left-8 z-10">
         <Sheet>
           <SheetTrigger asChild>
@@ -416,14 +385,12 @@ export default function DashboardPage() {
         </Sheet>
       </div>
 
-      {/* PANEL DESLIZABLE INFERIOR */}
       <div className={cn("absolute inset-x-0 bottom-0 bg-white shadow-[0_-20px_50px_rgba(0,0,0,0.1)] rounded-t-[3.5rem] transition-all duration-500 ease-in-out z-20 overflow-hidden flex flex-col", sheetY === '0' ? "top-20" : sheetY === 'calc(100% - 40px)' ? "top-[calc(100%-40px)]" : "top-1/2")}>
         <div className="h-12 w-full flex items-center justify-center cursor-pointer active:bg-slate-50" onClick={() => setIsExpanded(!isExpanded)}>
           <div className={cn("w-16 h-1.5 rounded-full mb-8", hasActiveSOS ? "bg-red-600 animate-pulse" : "bg-slate-200")}></div>
         </div>
         
         <div className="flex-1 overflow-y-auto px-8 pb-12 scrollbar-hide">
-          {/* NAVEGACIÓN DEL PANEL (ICONOS ACTUALIZADOS) */}
           <div className="flex justify-center mb-10 sticky top-0 bg-white pt-2 pb-4 z-30">
             <div className="bg-slate-50 p-2 rounded-[2.5rem] flex items-center gap-2 shadow-inner border border-slate-100">
               <Button variant="ghost" size="icon" onClick={() => setActiveTab("ruta")} className={cn("h-16 w-16 rounded-[1.8rem]", activeTab === "ruta" ? "bg-slate-900 text-white" : "text-slate-400")}><Truck className="h-7 w-7" /></Button>
@@ -433,17 +400,13 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* CONTENIDO DE MI RUTA PRO (ESTILO ALTA FIDELIDAD) */}
           {activeTab === 'ruta' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-left">
-              {/* Tarjeta Mi Ruta Pro Oscura */}
               <div className="bg-slate-900 rounded-[3rem] p-10 text-white shadow-2xl mb-12 relative overflow-hidden">
                 <div className="flex justify-between items-center mb-10">
                   <h1 className="text-4xl font-black tracking-tighter">Mi Ruta Pro</h1>
                   <Flame className="w-8 h-8 text-orange-500 fill-orange-500" />
                 </div>
-                
-                {/* Misión Diaria */}
                 <div className="bg-slate-800/50 rounded-[2.5rem] p-8 border border-slate-700/50 mb-10">
                    <div className="flex justify-between items-center mb-6">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">MISIÓN DIARIA: BONO $2,000</p>
@@ -453,7 +416,6 @@ export default function DashboardPage() {
                       <div className="bg-blue-600 h-full w-1/2 rounded-full" />
                    </div>
                 </div>
-
                 <div className="grid grid-cols-2 gap-6">
                   <div className="bg-slate-800/50 rounded-[2.5rem] p-8 border border-slate-700/50 flex flex-col items-center">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">POSICIÓN</p>
@@ -468,8 +430,6 @@ export default function DashboardPage() {
                   </div>
                 </div>
               </div>
-
-              {/* Parada Actual / Pedido Activo */}
               {activeOrder ? (
                 <Card className="rounded-[3rem] border-none shadow-[0_30px_60px_rgba(0,0,0,0.08)] bg-white p-10 relative">
                   <div className="flex justify-between items-start mb-8">
@@ -485,8 +445,6 @@ export default function DashboardPage() {
                       1
                     </div>
                   </div>
-
-                  {/* Ganancia Section */}
                   <div className="bg-emerald-50 rounded-[2rem] p-6 mb-8 flex items-center justify-between">
                      <div className="flex items-center gap-4">
                         <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
@@ -496,8 +454,6 @@ export default function DashboardPage() {
                      </div>
                      <span className="text-2xl font-black text-emerald-600">$1,500</span>
                   </div>
-
-                  {/* Action Buttons Row */}
                   <div className="grid grid-cols-2 gap-4 mb-8">
                     <Button variant="secondary" className="h-16 rounded-[2rem] bg-slate-50 border-none shadow-sm hover:bg-slate-100 flex items-center justify-center gap-3">
                        <Phone className="w-5 h-5 text-blue-500" />
@@ -508,7 +464,6 @@ export default function DashboardPage() {
                        <span className="font-black text-sm text-slate-900 uppercase tracking-widest">CHAT</span>
                     </Button>
                   </div>
-
                   <Button className="w-full h-20 rounded-[2.5rem] bg-orange-500 hover:bg-orange-600 text-white font-black text-lg tracking-tight shadow-2xl shadow-orange-500/30 uppercase">
                     CONFIRMAR RECOJO
                   </Button>
@@ -533,7 +488,6 @@ export default function DashboardPage() {
                   <p className="text-emerald-500 font-black text-[10px] uppercase tracking-[0.2em] mt-1">Oportunidades Live</p>
                 </div>
               </div>
-              
               <div className="space-y-2">
                 {pendingOrders?.length === 0 ? (
                   <div className="py-20 text-center bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200">
@@ -554,7 +508,6 @@ export default function DashboardPage() {
               <header className="flex items-center justify-between mb-10">
                 <h2 className="text-3xl font-black tracking-tighter uppercase">Coro Driver</h2>
               </header>
-              
               <div className="flex gap-4 mb-12 overflow-x-auto pb-4 scrollbar-hide">
                 {[
                   { id: "policia", label: "CONTROL", icon: ShieldAlert, bg: "bg-blue-50", color: "text-blue-600" },
@@ -583,7 +536,6 @@ export default function DashboardPage() {
                   </Dialog>
                 ))}
               </div>
-
               <div className="space-y-4">
                 {alerts?.map((alert) => (
                   <CoroItem key={alert.id} alert={alert} userId={user.uid} onOpenChat={(id) => { setSelectedChatAlertId(id); setSelectedChatOrderId(null); setActiveTab('central'); }} />
@@ -619,22 +571,32 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <h2 className="text-3xl font-black tracking-tighter uppercase mb-6 px-2">Canal de Chat</h2>
-                    <p className="text-xs text-slate-400 px-2 mb-4 font-bold uppercase tracking-widest">Chats de Pedidos</p>
-                    {driverActiveOrders?.map(order => (
-                      <Card key={order.id} className="rounded-[40px] border-none shadow-sm bg-slate-50/50 hover:bg-white transition-all cursor-pointer" onClick={() => { setSelectedChatOrderId(order.id); setSelectedChatAlertId(null); }}>
-                        <CardContent className="p-5 flex items-center justify-between">
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-[20px] bg-white flex items-center justify-center border border-slate-100"><MessageSquare className="w-5 h-5 text-primary" /></div>
+                    <h2 className="text-5xl font-black tracking-tighter text-slate-900 leading-tight mb-2">Central</h2>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-12">CANAL DIRECTO</p>
+                    
+                    <div className="space-y-4">
+                      {driverActiveOrders?.map(order => (
+                        <div key={order.id} className="rounded-[40px] bg-slate-50/50 border border-slate-100/50 p-6 flex items-center justify-between hover:bg-white hover:shadow-xl hover:shadow-slate-200/50 transition-all cursor-pointer group" onClick={() => { setSelectedChatOrderId(order.id); setSelectedChatAlertId(null); }}>
+                          <div className="flex items-center gap-6">
+                            <div className="w-16 h-16 rounded-[24px] bg-white flex items-center justify-center shadow-sm border border-slate-100 group-hover:scale-110 transition-transform">
+                              <MessageSquare className="w-6 h-6 text-slate-900" />
+                            </div>
                             <div className="text-left">
-                              <h4 className="font-black text-slate-900 text-[13px] uppercase truncate">Orden #{order.id.substring(0, 5)}</h4>
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{order.deliveryAddress.split(',')[0]}</p>
+                              <h4 className="font-black text-slate-900 text-base uppercase tracking-tight">ORDEN #{order.id.substring(0, 5)}</h4>
+                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">CBH • {order.status.toUpperCase()}</p>
                             </div>
                           </div>
-                          <ChevronRight className="w-4 h-4 text-slate-300" />
-                        </CardContent>
-                      </Card>
-                    ))}
+                          <ChevronRight className="w-5 h-5 text-slate-200 group-hover:text-slate-900 transition-colors" />
+                        </div>
+                      ))}
+                      
+                      {driverActiveOrders?.length === 0 && (
+                        <div className="py-20 text-center bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200">
+                          <MessageSquare className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+                          <p className="text-slate-400 font-black uppercase text-xs tracking-widest">No hay canales de chat activos</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
              </div>
