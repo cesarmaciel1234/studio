@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useState, useMemo, useCallback, useEffect } from "react"
+import { useState, useMemo, useCallback, useEffect, useRef } from "react"
 import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { 
@@ -42,7 +42,8 @@ import {
   LayoutDashboard,
   PlusCircle,
   Leaf,
-  Users
+  Users,
+  Heart
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -96,30 +97,58 @@ const InteractiveMap = dynamic(() => import('@/components/dashboard/InteractiveM
 });
 
 // Componentes auxiliares locales
-const CoroItem = ({ alert }: { alert: any, userId: string }) => {
+const CoroItem = ({ alert, userId }: { alert: any, userId: string }) => {
+  const isSOS = alert.type === 'sos';
+  const Icon = alert.type === 'policia' ? ShieldAlert : 
+               alert.type === 'trafico' ? Clock : 
+               alert.type === 'obras' ? Navigation : AlertTriangle;
+  
+  const colorClass = alert.type === 'policia' ? 'text-blue-600' : 
+                     alert.type === 'trafico' ? 'text-orange-600' : 
+                     alert.type === 'sos' ? 'text-red-600' : 
+                     alert.type === 'obras' ? 'text-emerald-600' : 'text-slate-600';
+  
+  const bgColorClass = alert.type === 'policia' ? 'bg-blue-50' : 
+                       alert.type === 'trafico' ? 'bg-orange-50' : 
+                       alert.type === 'sos' ? 'bg-red-50' : 
+                       alert.type === 'obras' ? 'bg-emerald-50' : 'bg-slate-50';
+
   return (
-    <div className="flex items-center gap-5 p-5 bg-white rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-all">
-      <div className={cn("h-14 w-14 rounded-2xl flex items-center justify-center shrink-0", 
-        alert.type === 'policia' ? 'bg-blue-50 text-blue-600' : 
-        alert.type === 'trafico' ? 'bg-orange-50 text-orange-600' : 
-        alert.type === 'sos' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'
-      )}>
-        {alert.type === 'policia' ? <ShieldAlert className="w-6 h-6" /> : 
-         alert.type === 'trafico' ? <Clock className="w-6 h-6" /> : 
-         <AlertTriangle className="w-6 h-6" />}
+    <Card className="rounded-[32px] border-none shadow-sm bg-white p-6 animate-in fade-in slide-in-from-bottom-2 duration-300 mb-4">
+      <div className="flex items-start gap-4">
+        <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shrink-0", bgColorClass)}>
+          <Icon className={cn("w-6 h-6", colorClass)} />
+        </div>
+        <div className="flex-1 text-left">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
+             <h4 className={cn("font-black text-xs uppercase tracking-tight", colorClass)}>{alert.label}</h4>
+             <span className="text-slate-200">•</span>
+             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+               {alert.createdAt ? format(new Date(alert.createdAt), 'dd/MM/yy HH:mm') : 'AHORA'} • REPORTE VIAL
+             </p>
+          </div>
+          <p className="text-sm font-medium text-slate-700 leading-relaxed mb-4">
+            {alert.description || 'Reporte de incidencia en tiempo real en la zona.'}
+          </p>
+          <div className="flex items-center gap-5">
+            <button className="flex items-center gap-1.5 text-slate-400 hover:text-red-500 transition-colors group">
+              <Heart className={cn("w-4 h-4", alert.likes?.includes(userId) && "fill-red-500 text-red-500")} />
+              <span className="text-[10px] font-black">{alert.likes?.length || 0}</span>
+            </button>
+            <button className="flex items-center gap-1.5 text-slate-400 hover:text-blue-500 transition-colors">
+              <MessageSquare className="w-4 h-4" />
+              <span className="text-[10px] font-black">{alert.participantIds?.length ? alert.participantIds.length - 1 : 0}</span>
+            </button>
+          </div>
+        </div>
       </div>
-      <div className="flex-1 text-left">
-        <h4 className="font-black text-sm text-slate-900 uppercase tracking-tight">{alert.label}</h4>
-        <p className="text-[10px] font-bold text-slate-400 mb-1">REPORTE VIAL</p>
-        <p className="text-xs text-slate-600 line-clamp-1">{alert.description}</p>
-      </div>
-    </div>
+    </Card>
   )
 }
 
 const DriverOrderCard = ({ order, index, onOpenChat }: any) => {
   return (
-    <Card className="rounded-[32px] border-none shadow-lg bg-white overflow-hidden">
+    <Card className="rounded-[32px] border-none shadow-lg bg-white overflow-hidden mb-4">
       <div className="p-6 flex items-center gap-4">
         <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white">
           <span className="font-black text-lg">{index + 1}</span>
@@ -218,6 +247,9 @@ export default function DashboardPage() {
   const [newPickupTime, setNewPickupTime] = useState("Inmediato")
   const [newPkgDescription, setNewPkgDescription] = useState("")
 
+  // Refs para chat scroll
+  const chatScrollRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     setMounted(true)
     if ("geolocation" in navigator) {
@@ -235,7 +267,13 @@ export default function DashboardPage() {
     }
   }, [])
 
-  // Firebase Data Queries - Solo si el usuario está autenticado
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTo(0, chatScrollRef.current.scrollHeight)
+    }
+  }, [selectedChatOrderId, chatMessageText])
+
+  // Firebase Data Queries
   const userRef = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
     return doc(firestore, "users", user.uid);
@@ -371,6 +409,14 @@ export default function DashboardPage() {
     setChatMessageText("")
   }
 
+  const handleClearAllAlerts = () => {
+    if (!firestore || !alerts) return
+    alerts.forEach(alert => {
+      deleteDocumentNonBlocking(doc(firestore, "alerts", alert.id))
+    })
+    toast({ title: "Alertas eliminadas" })
+  }
+
   const safeFormat = (dateStr: string, pattern: string) => {
     try { return format(new Date(dateStr), pattern) } catch { return "" }
   }
@@ -442,12 +488,6 @@ export default function DashboardPage() {
                     <Users className="h-5 w-5 text-purple-500" />
                   </div>
                   <span className="text-md font-bold text-slate-700">Mensajes comunidad</span>
-                </Link>
-                <Link href="/messages/history" className="flex items-center gap-4 group">
-                  <div className="h-11 w-11 rounded-[0.8rem] bg-orange-50 flex items-center justify-center shadow-sm">
-                    <MessageSquare className="h-5 w-5 text-orange-500" />
-                  </div>
-                  <span className="text-md font-bold text-slate-700">Mensajes con la comunidad</span>
                 </Link>
               </div>
               <Button variant="ghost" onClick={() => signOut(auth!)} className="w-full justify-start gap-4 h-16 rounded-3xl text-red-500 font-black px-5 hover:bg-red-50 text-sm"><LogOut className="w-5 h-5" /> Salir del sistema</Button>
@@ -538,18 +578,26 @@ export default function DashboardPage() {
           )}
           {activeTab === 'alerta' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-left">
-              <h2 className="text-3xl font-black tracking-tighter uppercase mb-10">Coro Driver</h2>
+              <header className="flex items-center justify-between mb-10">
+                <h2 className="text-3xl font-black tracking-tighter uppercase">Coro Driver</h2>
+                {isAdmin && alerts && alerts.length > 0 && (
+                  <Button variant="ghost" onClick={handleClearAllAlerts} className="text-red-500 font-bold uppercase text-[10px]"><Trash2 className="w-4 h-4 mr-2" /> Limpiar</Button>
+                )}
+              </header>
               <div className="flex gap-4 mb-12 overflow-x-auto pb-4 scrollbar-hide">
                 {[
                   { id: "policia", label: "CONTROL", icon: ShieldAlert, bg: "bg-blue-50", color: "text-blue-600" },
                   { id: "trafico", label: "TRÁFICO", icon: Clock, bg: "bg-orange-50", color: "text-orange-600" },
-                  { id: "sos", label: "SOS", icon: AlertTriangle, bg: "bg-red-50", color: "text-red-600" },
+                  { id: "accidente", label: "PELIGRO", icon: AlertTriangle, bg: "bg-red-50", color: "text-red-600" },
+                  { id: "obras", label: "OBRAS", icon: Navigation, bg: "bg-emerald-50", color: "text-emerald-600" },
                 ].map((a) => (
                   <Dialog key={a.id}>
                     <DialogTrigger asChild>
                       <div className="flex flex-col items-center gap-4 min-w-[100px] cursor-pointer" onClick={() => setSelectedAlertType({id: a.id, label: a.label})}>
-                        <div className={cn("h-20 w-20 rounded-full flex items-center justify-center shadow-sm", a.bg)}>
-                          <a.icon className={cn("h-8 w-8", a.color)} />
+                        <div className={cn("h-20 w-20 rounded-[28px] flex items-center justify-center shadow-sm bg-white border border-slate-100")}>
+                          <div className={cn("h-12 w-12 rounded-[18px] flex items-center justify-center", a.bg)}>
+                            <a.icon className={cn("h-6 w-6", a.color)} />
+                          </div>
                         </div>
                         <span className="text-[10px] font-black uppercase tracking-wider">{a.label}</span>
                       </div>
@@ -579,7 +627,7 @@ export default function DashboardPage() {
                       <Button variant="ghost" size="icon" onClick={() => setSelectedChatOrderId(null)} className="rounded-full h-10 w-10"><ChevronLeft className="w-6 h-6" /></Button>
                       <h2 className="text-[14px] font-black tracking-tight uppercase truncate">Chat Orden #{selectedChatOrderId.substring(0, 5)}</h2>
                     </header>
-                    <div className="flex-1 overflow-y-auto space-y-3 px-2 scrollbar-hide mb-4 min-h-[300px]">
+                    <div ref={chatScrollRef} className="flex-1 overflow-y-auto space-y-3 px-2 scrollbar-hide mb-4 min-h-[300px]">
                       {chatMessages?.map((msg) => (
                         <div key={msg.id} className={cn("flex", msg.authorId === user.uid ? 'justify-end' : 'justify-start')}>
                           <div className={cn("max-w-[85%] p-4 rounded-[22px] text-[13px] shadow-sm", msg.authorId === user.uid ? 'bg-slate-900 text-white rounded-tr-none' : 'bg-white text-slate-800 rounded-tl-none')}>
