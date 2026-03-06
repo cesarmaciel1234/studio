@@ -4,47 +4,54 @@
 
 @layer base {
   :root {
-    --background: 250 20% 95%;
-    --foreground: 250 10% 10%;
+    --background: 220 15% 98%;
+    --foreground: 219 68% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 250 10% 10%;
+    --card-foreground: 219 68% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 250 10% 10%;
-    --primary: 250 80% 40%;
-    --primary-foreground: 250 20% 98%;
-    --secondary: 250 20% 90%;
-    --secondary-foreground: 250 80% 20%;
-    --muted: 250 10% 90%;
-    --muted-foreground: 250 10% 40%;
-    --accent: 220 60% 65%;
-    --accent-foreground: 220 10% 10%;
+    --popover-foreground: 219 68% 10%;
+    --primary: 219 68% 18%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 15% 90%;
+    --secondary-foreground: 219 68% 18%;
+    --muted: 220 15% 90%;
+    --muted-foreground: 219 20% 45%;
+    --accent: 123 53% 53%;
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 250 10% 85%;
-    --input: 250 10% 85%;
-    --ring: 250 80% 40%;
-    --radius: 0.75rem;
-    --chart-1: 250 80% 40%;
-    --chart-2: 220 60% 65%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --sidebar-background: 250 30% 15%;
-    --sidebar-foreground: 250 20% 95%;
-    --sidebar-primary: 250 80% 40%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 250 40% 25%;
-    --sidebar-accent-foreground: 250 20% 98%;
-    --sidebar-border: 250 30% 20%;
-    --sidebar-ring: 250 80% 50%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 219 20% 88%;
+    --input: 219 20% 88%;
+    --ring: 219 68% 18%;
+    --radius: 1.5rem;
   }
 }
 
 @layer base {
   * {
     @apply border-border;
+    -webkit-tap-highlight-color: transparent;
   }
   body {
-    @apply bg-background text-foreground font-body;
+    @apply bg-background text-foreground overflow-hidden fixed inset-0;
+    touch-action: pan-x pan-y;
   }
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.4s cubic-bezier(0.32, 0.72, 0, 1);
 }

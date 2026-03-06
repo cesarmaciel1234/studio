@@ -1,94 +1,146 @@
 'use server';
+/**
+ * @fileOverview This file implements a Genkit flow for a conversational driver copilot.
+ *
+ * - driverCopilot - A function that acts as a conversational AI assistant for drivers.
+ */
 
 import { ai } from '@/ai/genkit';
-import { 
-  DriverCapoInputSchema, 
-  DriverCapoOutputSchema 
+import {
+  DriverCopilotInputSchema,
+  type DriverCopilotInput,
+  DriverCopilotOutputSchema,
+  type DriverCopilotOutput,
 } from '@/ai/schemas';
-import { z } from 'genkit';
+import { searchKnowledgeBase } from '@/ai/tools/knowledge-base-tool';
+import { generateCompletionImage } from '@/ai/tools/image-generation-tool';
+import { optimizeDriverRoute } from '@/ai/tools/route-optimization-tool';
 
-/**
- * Herramienta para buscar en la base de conocimientos de logística.
- */
-const searchKnowledgeBase = ai.defineTool(
-  {
-    name: 'searchKnowledgeBase',
-    description: 'Busca información sobre protocolos, rutas frecuentes o ayuda técnica.',
-    inputSchema: z.object({ query: z.string() }),
-    outputSchema: z.string(),
-  },
-  async (input) => {
-    // Simulación de búsqueda en base de conocimientos
-    return `Resultado para "${input.query}": Los protocolos de entrega express sugieren contacto telefónico previo.`;
-  }
-);
+export async function driverCopilot(
+  input: DriverCopilotInput
+): Promise<DriverCopilotOutput> {
+  return driverCopilotFlow(input);
+}
 
-/**
- * Herramienta para optimizar la ruta actual del conductor.
- */
-const optimizeDriverRoute = ai.defineTool(
-  {
-    name: 'optimizeDriverRoute',
-    description: 'Calcula y sugiere la mejor ruta basada en el tráfico y pedidos actuales.',
-    inputSchema: z.object({ driverId: z.string() }),
-    outputSchema: z.object({
-      suggestion: z.string(),
-      estimatedTimeSaved: z.number(),
-    }),
-  },
-  async (input) => {
-    return {
-      suggestion: 'Toma la lateral de Av. Reforma para evitar el cierre por obras en el centro.',
-      estimatedTimeSaved: 12,
-    };
-  }
-);
+const prompt = ai.definePrompt({
+  name: 'driverCopilotPrompt',
+  input: { schema: DriverCopilotInputSchema },
+  output: { schema: DriverCopilotOutputSchema },
+  tools: [searchKnowledgeBase, generateCompletionImage, optimizeDriverRoute],
+  prompt: `Eres "Copo", un copiloto de IA experto, amigable y proactivo para los repartidores de la empresa RutaRápida. Tu objetivo principal es garantizar la seguridad y eficiencia del conductor.
 
-/**
- * Prompt principal del sistema para Capo.
- */
-const capoPrompt = ai.definePrompt({
-  name: 'capoPrompt',
-  input: { schema: DriverCapoInputSchema },
-  output: { schema: DriverCapoOutputSchema },
-  tools: [searchKnowledgeBase, optimizeDriverRoute],
-  prompt: `Eres Capo, el asistente inteligente de RutaRápida Pro. 
-Tu personalidad es amigable, profesional y extremadamente proactiva.
-Tu misión es ayudar a {{driverName}} (ID: {{driverId}}) a completar sus entregas de forma eficiente y segura.
+Tus respuestas deben ser concisas, claras y directamente accionables para un conductor en la carretera. Habla siempre en español.
 
-Información actual:
-- Ubicación: {{location.lat}}, {{location.lng}} ({{location.address}})
-- Pedidos activos: {{#each activeOrders}}- {{id}}: {{status}} hacia {{destination}} {{/each}}
-
-Usa las herramientas disponibles si necesitas optimizar rutas o buscar información técnica.
-Responde siempre en español, de forma concisa y directa.
-
-Historial de chat:
-{{#each chatHistory}}
-{{role}}: {{text}}
+Tienes acceso a la siguiente información en tiempo real:
+- ID del Conductor: {{{driverId}}}
+- Ubicación Actual: {{#if currentLocation}}Latitud: {{{currentLocation.latitude}}}, Longitud: {{{currentLocation.longitude}}}{{else}}No disponible{{/if}}
+- Pedidos Activos: {{#if activeOrders}}{{#each activeOrders}}ID de Pedido {{{id}}}, Estado: {{{status}}}. {{/each}}{{else}}Ningún pedido activo{{/if}}
+- Alertas Cercanas: {{#if nearbyAlerts}}{{#each nearbyAlerts}}{{{this.label}}}: {{{this.description}}}. {{/each}}{{else}}No hay alertas cercanas.{{/if}}
+- Historial de Conversación:
+{{#each conversationHistory}}
+  - {{role}}: {{{content}}}
 {{/each}}
 
-Usuario: {{userInput}}`,
+{{#if audioMessage}}
+[El conductor ha enviado un mensaje de voz. Primero, transcribe el mensaje de voz y coloca la transcripción en el campo \`userTranscription\`. Luego, responde a su contenido en español. El mensaje de voz es el siguiente.]
+Mensaje de voz: {{media url=audioMessage}}
+{{/if}}
+
+Analiza el último mensaje del conductor (ya sea de texto en el historial o el de voz que acabas de transcribir) en el contexto de toda la información proporcionada.
+
+**Tus Directivas Principales:**
+
+1.  **Uso de la Base de Conocimientos (RAG):** Si el conductor pregunta sobre un procedimiento, protocolo, regla, o cómo manejar una situación (ej. "¿qué hago si el cliente no está?", "¿cuál es el protocolo para una avería?"), **DEBES** usar la herramienta \`searchKnowledgeBase\` para encontrar la respuesta en los documentos de la empresa. Basa tu respuesta en la información que la herramienta te devuelva. Si no encuentras una respuesta, indícalo claramente.
+2.  **Optimización de Ruta:** Si el conductor pide "optimiza mi ruta", "cuál es el camino más rápido", o algo similar, **DEBES** usar la herramienta \`optimizeDriverRoute\`. Para hacerlo, crea una lista de paradas (el parámetro \`stops\`) a partir de los \`activeOrders\`. Por cada pedido, si su estado es 'Assigned', crea una parada de tipo "pickup" con \`pickupAddress\`. Luego, para todos los pedidos activos, crea una parada de tipo "delivery" con \`deliveryAddress\`. No olvides pasar la ubicación actual del conductor en \`driverCurrentLocation\`. Resume la ruta optimizada al conductor.
+3.  **Seguridad Primero:** Si ves una alerta crítica (como 'SOS', 'accidente', 'peligro'), tu prioridad inmediata es verificar el estado del conductor. Pregúntale si está bien y si necesita ayuda. Sé empático. Ejemplo: "¡Alerta de Accidente cerca! ¿Estás bien? ¿Necesitas ayuda?"
+4.  **Asistencia Proactiva:** No te limites a responder preguntas. Anticípate a las necesidades.
+    *   Si llega un nuevo mensaje: "Recibiste un nuevo mensaje sobre la orden {{{activeOrders.[0].id}}}."
+    *   Si el conductor se desvía de la ruta: "Detecto un desvío de la ruta. ¿Todo en orden? ¿Necesitas una ruta alternativa?"
+    *   Si hay una alerta de tráfico más adelante: "Atención, hay un reporte de tráfico pesado más adelante. Te sugiero tomar una ruta alternativa por la calle X."
+5.  **Orientado a Tareas y Conciso:** Ofrece respuestas directas relacionadas con la entrega.
+    *   Usuario: "¿Cuál es la siguiente parada?" -> Copo: "Tu siguiente parada es el recojo en [Dirección de Recojo]."
+    *   Usuario: "¿Hay algún problema en la ruta?" -> Copo: "Veo un reporte de 'Obras' en [Calle]. Te recomiendo desviarte por [Calle Alternativa]."
+6.  **Tono Amigable y Alentador:** Usa un tono de apoyo y positivo. Mantén al conductor motivado. "¡Vamos, equipo! Esa entrega va por buen camino."
+7.  **Directiva de Celebración:** Si el conductor menciona que ha finalizado una entrega (ej. "entrega lista", "paquete entregado"), felicítalo. Luego, de forma proactiva, usa la herramienta \`generateCompletionImage\` para crear una imagen de celebración. Asegúrate de que la URL de la imagen generada por la herramienta se incluya en el campo \`imageUrl\` de tu respuesta.
+
+Basándote en el último mensaje del historial de conversación (o el mensaje de voz si se proporcionó), genera la respuesta más útil y relevante de acuerdo a tus directivas.`,
 });
 
-/**
- * Flujo principal de Capo.
- */
-export const driverCapo = ai.defineFlow(
+async function toWav(
+  pcmData: Buffer,
+  channels = 1,
+  rate = 24000,
+  sampleWidth = 2
+): Promise<string> {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const wav = require('wav');
+  return new Promise((resolve, reject) => {
+    const writer = new wav.Writer({
+      channels,
+      sampleRate: rate,
+      bitDepth: sampleWidth * 8,
+    });
+
+    let bufs = [] as any[];
+    writer.on('error', reject);
+    writer.on('data', function (d) {
+      bufs.push(d);
+    });
+    writer.on('end', function () {
+      resolve(Buffer.concat(bufs).toString('base64'));
+    });
+
+    writer.write(pcmData);
+    writer.end();
+  });
+}
+
+const driverCopilotFlow = ai.defineFlow(
   {
-    name: 'driverCapo',
-    inputSchema: DriverCapoInputSchema,
-    outputSchema: DriverCapoOutputSchema,
+    name: 'driverCopilotFlow',
+    inputSchema: DriverCopilotInputSchema,
+    outputSchema: DriverCopilotOutputSchema,
   },
   async (input) => {
-    const { output } = await capoPrompt(input);
-    
+    const { output } = await prompt(input);
     if (!output) {
-      throw new Error('No se pudo generar una respuesta de Capo.');
+      throw new Error('Copo is currently unavailable.');
     }
 
-    // Aquí se podría integrar lógica de TTS si fuera necesario
-    // Por ahora devolvemos el objeto de salida estructurado
-    return output;
+    let audioDataUri: string | undefined = undefined;
+    if (output.response) {
+      try {
+        const { media } = await ai.generate({
+          model: 'googleai/gemini-2.5-flash-preview-tts',
+          config: {
+            responseModalities: ['AUDIO'],
+            speechConfig: {
+              voiceConfig: {
+                voiceName: 'Algenib', // Standard male voice
+              },
+            },
+          },
+          prompt: output.response,
+        });
+        
+        if (media?.url) {
+          const audioBuffer = Buffer.from(
+            media.url.substring(media.url.indexOf(',') + 1),
+            'base64'
+          );
+          const wavBase64 = await toWav(audioBuffer);
+          audioDataUri = 'data:audio/wav;base64,' + wavBase64;
+        }
+      } catch (ttsError) {
+        console.error("[TTS Error] Failed to generate audio for Copilot response:", ttsError);
+      }
+    }
+    
+    return {
+      response: output.response,
+      userTranscription: output.userTranscription,
+      imageUrl: output.imageUrl,
+      audioUrl: audioDataUri,
+    };
   }
 );

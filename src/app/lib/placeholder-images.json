@@ -1,0 +1,23 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "driver-avatar",
+      "description": "Professional delivery driver portrait",
+      "imageUrl": "https://picsum.photos/seed/driver1/200/200",
+      "imageHint": "driver person"
+    },
+    {
+      "id": "vehicle-motorcycle",
+      "description": "Delivery motorcycle",
+      "imageUrl": "https://picsum.photos/seed/moto/400/300",
+      "imageHint": "delivery motorcycle"
+    },
+    {
+      "id": "city-map-bg",
+      "description": "City map background",
+      "imageUrl": "https://picsum.photos/seed/map/800/600",
+      "imageHint": "city map"
+    }
+  ]
+}

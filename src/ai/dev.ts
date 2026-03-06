@@ -1,7 +1,10 @@
+'use server';
 import { config } from 'dotenv';
 config();
 
-import '@/ai/flows/proactive-logistical-insights.ts';
-import '@/ai/flows/generate-optimized-route-from-description.ts';
-import '@/ai/flows/summarize-driver-activity.ts';
-import '@/ai/flows/driver-route-optimization.ts';
+import '@/ai/flows/driver-route-optimization-flow.ts';
+import '@/ai/flows/business-insights-flow.ts';
+import '@/ai/flows/driver-copilot-flow.ts';
+import '@/ai/tools/knowledge-base-tool.ts';
+import '@/ai/tools/image-generation-tool.ts';
+import '@/ai/tools/route-optimization-tool.ts';

@@ -1,18 +1,16 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, ZoomControl, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, ZoomControl, Polyline, useMap, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { renderToStaticMarkup } from 'react-dom/server';
-import { Truck, AlertTriangle, Navigation as NavIcon } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
+import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { Truck, User, Package, Navigation as NavIcon, AlertTriangle } from 'lucide-react';
+import { renderToStaticMarkup } from 'react-dom/server';
 
-/**
- * Corrige un problema conocido de Leaflet con Next.js donde las rutas a los íconos
- * por defecto se rompen. Esto asegura que los marcadores predeterminados se muestren correctamente.
- */
 const fixLeafletIcons = () => {
   // @ts-ignore
   delete L.Icon.Default.prototype._getIconUrl;
@@ -23,9 +21,6 @@ const fixLeafletIcons = () => {
   });
 };
 
-/**
- * Crea un ícono de conductor personalizado y dinámico usando HTML y CSS.
- */
 const createDriverIcon = (color: string, isBusy: boolean = false, isSOS: boolean = false) => {
   const iconHtml = renderToStaticMarkup(
     <div className="relative">
@@ -171,7 +166,7 @@ export default function InteractiveMap({
   if (!isMounted) {
     return (
       <div className="h-full w-full bg-slate-200 animate-pulse flex items-center justify-center">
-        <p className="text-slate-400 font-black uppercase tracking-widest text-[10px]">Cargando Monitor de Flota...</p>
+        <p className="text-slate-400 font-black uppercase tracking-widest text-[10px]">Cargando Monitor de Flota Biz...</p>
       </div>
     );
   }
@@ -276,7 +271,7 @@ export default function InteractiveMap({
               </Popup>
             </Marker>
           )}
-          
+
           <MapController center={center} heading={heading} isNavigating={isNavigating} centerTrigger={centerTrigger} />
           {!isNavigating && <ZoomControl position="bottomright" />}
         </MapContainer>

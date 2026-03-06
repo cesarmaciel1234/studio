@@ -1,87 +1,745 @@
 
 {
   "entities": {
-    "User": {
-      "title": "User",
-      "description": "Represents a user in the RutaRápida Pro system.",
+    "DriverProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DriverProfile",
       "type": "object",
+      "description": "Represents a delivery driver's personal and operational information within the RutaRápida Driver application. This includes their identity, contact details, operational status, and a reference to their assigned vehicle.",
       "properties": {
-        "id": { "type": "string" },
-        "firstName": { "type": "string" },
-        "role": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the DriverProfile entity."
+        },
+        "externalUserId": {
+          "type": "string",
+          "description": "Reference to the unique identifier from an external authentication system for the driver."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The driver's first name."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The driver's last name."
+        },
+        "email": {
+          "type": "string",
+          "description": "The driver's email address.",
+          "format": "email"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "The driver's primary phone number."
+        },
+        "dateOfBirth": {
+          "type": "string",
+          "description": "The driver's date of birth.",
+          "format": "date"
+        },
+        "addressLine1": {
+          "type": "string",
+          "description": "The first line of the driver's street address."
+        },
+        "addressLine2": {
+          "type": "string",
+          "description": "The second line of the driver's street address (e.g., apartment, suite number)."
+        },
+        "city": {
+          "type": "string",
+          "description": "The city of the driver's address."
+        },
+        "stateProvince": {
+          "type": "string",
+          "description": "The state or province of the driver's address."
+        },
+        "postalCode": {
+          "type": "string",
+          "description": "The postal code of the driver's address."
+        },
+        "country": {
+          "type": "string",
+          "description": "The country of the driver's address."
+        },
+        "profilePictureUrl": {
+          "type": "string",
+          "description": "URL to the driver's profile picture.",
+          "format": "uri"
+        },
+        "driverLicenseNumber": {
+          "type": "string",
+          "description": "The driver's license number."
+        },
+        "vehicleId": {
+          "type": "string",
+          "description": "Reference to the Vehicle entity currently assigned to this driver. (Relationship: DriverProfile 1:1 Vehicle)"
+        },
+        "availabilityStatus": {
+          "type": "string",
+          "description": "The current operational status of the driver (e.g., 'Available', 'Offline', 'OnDelivery', 'Break')."
+        },
+        "rating": {
+          "type": "number",
+          "description": "The average rating of the driver based on customer feedback."
+        },
+        "totalDeliveries": {
+          "type": "number",
+          "description": "The total number of deliveries completed by the driver."
+        },
+        "registrationDate": {
+          "type": "string",
+          "description": "The date and time when the driver registered with the application.",
+          "format": "date-time"
+        },
+        "lastOnline": {
+          "type": "string",
+          "description": "The last known date and time when the driver was online or active in the application.",
+          "format": "date-time"
+        }
       },
-      "required": ["id", "firstName", "role", "createdAt", "updatedAt"]
+      "required": [
+        "id",
+        "externalUserId",
+        "firstName",
+        "lastName",
+        "email",
+        "phoneNumber",
+        "driverLicenseNumber",
+        "availabilityStatus",
+        "registrationDate"
+      ]
     },
-    "Alert": {
-      "title": "Alert",
-      "description": "Community alert about road conditions.",
+    "Vehicle": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Vehicle",
       "type": "object",
+      "description": "Details about a vehicle used by a driver for deliveries, including make, model, and registration information.",
       "properties": {
-        "id": { "type": "string" },
-        "type": { "type": "string" },
-        "label": { "type": "string" },
-        "description": { "type": "string" },
-        "latitude": { "type": "number" },
-        "longitude": { "type": "number" },
-        "authorId": { "type": "string" },
-        "status": { "type": "string" },
-        "likes": { "type": "array", "items": { "type": "string" } },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Vehicle entity."
+        },
+        "driverId": {
+          "type": "string",
+          "description": "Reference to the DriverProfile entity that this vehicle is primarily assigned to. (Relationship: Vehicle 1:1 DriverProfile)"
+        },
+        "make": {
+          "type": "string",
+          "description": "The manufacturer of the vehicle."
+        },
+        "model": {
+          "type": "string",
+          "description": "The model of the vehicle."
+        },
+        "year": {
+          "type": "number",
+          "description": "The manufacturing year of the vehicle."
+        },
+        "licensePlate": {
+          "type": "string",
+          "description": "The license plate number of the vehicle."
+        },
+        "vehicleType": {
+          "type": "string",
+          "description": "The type of vehicle (e.g., 'Motorcycle', 'Car', 'Van')."
+        },
+        "capacityDescription": {
+          "type": "string",
+          "description": "A description of the vehicle's capacity (e.g., 'Small', 'Medium', 'Large' or specific dimensions)."
+        },
+        "insurancePolicyNumber": {
+          "type": "string",
+          "description": "The insurance policy number for the vehicle."
+        },
+        "registrationExpiryDate": {
+          "type": "string",
+          "description": "The expiration date of the vehicle's registration.",
+          "format": "date"
+        }
       },
-      "required": ["id", "type", "label", "description", "latitude", "longitude", "authorId", "status", "createdAt"]
+      "required": [
+        "id",
+        "driverId",
+        "make",
+        "model",
+        "year",
+        "licensePlate",
+        "vehicleType"
+      ]
     },
-    "AlertMessage": {
-      "title": "AlertMessage",
-      "description": "A message sent within a community alert context.",
+    "DeliveryOrder": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DeliveryOrder",
       "type": "object",
+      "description": "Represents a single delivery order, encompassing details about the assigned driver, locations, package, and current status.",
       "properties": {
-        "id": { "type": "string" },
-        "authorId": { "type": "string" },
-        "authorName": { "type": "string" },
-        "content": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the DeliveryOrder entity."
+        },
+        "driverId": {
+          "type": "string",
+          "description": "Reference to the DriverProfile entity assigned to this order. (Relationship: DriverProfile 1:N DeliveryOrder)"
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Reference to the unique identifier of the customer who placed the order (from an external system)."
+        },
+        "orderNumber": {
+          "type": "string",
+          "description": "A human-readable order number for this delivery."
+        },
+        "pickupLocationId": {
+          "type": "string",
+          "description": "Reference to the Location entity where the package needs to be picked up. (Relationship: DeliveryOrder N:1 Location)"
+        },
+        "deliveryLocationId": {
+          "type": "string",
+          "description": "Reference to the Location entity where the package needs to be delivered. (Relationship: DeliveryOrder N:1 Location)"
+        },
+        "packageId": {
+          "type": "string",
+          "description": "Reference to the Package entity associated with this delivery order. (Relationship: DeliveryOrder 1:1 Package)"
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the delivery order (e.g., 'Pending', 'Assigned', 'Picked Up', 'In Transit', 'Delivered', 'Problem', 'Cancelled')."
+        },
+        "pickupInstructions": {
+          "type": "string",
+          "description": "Special instructions for picking up the package."
+        },
+        "deliveryInstructions": {
+          "type": "string",
+          "description": "Special instructions for delivering the package."
+        },
+        "estimatedPickupTime": {
+          "type": "string",
+          "description": "The estimated date and time for package pickup.",
+          "format": "date-time"
+        },
+        "actualPickupTime": {
+          "type": "string",
+          "description": "The actual date and time when the package was picked up.",
+          "format": "date-time"
+        },
+        "estimatedDeliveryTime": {
+          "type": "string",
+          "description": "The estimated date and time for package delivery.",
+          "format": "date-time"
+        },
+        "actualDeliveryTime": {
+          "type": "string",
+          "description": "The actual date and time when the package was delivered.",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The date and time when the delivery order was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "The last date and time when the delivery order was updated.",
+          "format": "date-time"
+        },
+        "proofOfDeliveryUrl": {
+          "type": "string",
+          "description": "URL to a photo or signature serving as proof of delivery.",
+          "format": "uri"
+        },
+        "problemDescription": {
+          "type": "string",
+          "description": "A description of any problems encountered during delivery if the status is 'Problem'."
+        }
       },
-      "required": ["id", "authorId", "authorName", "content", "timestamp"]
+      "required": [
+        "id",
+        "customerId",
+        "orderNumber",
+        "pickupLocationId",
+        "deliveryLocationId",
+        "packageId",
+        "status",
+        "createdAt"
+      ]
     },
-    "Order": {
-      "title": "Order",
-      "description": "Represents a delivery request.",
+    "Location": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Location",
       "type": "object",
+      "description": "Defines a geographical location with address details and coordinates, used for pickup and delivery points.",
       "properties": {
-        "id": { "type": "string" },
-        "clientName": { "type": "string" },
-        "deliveryAddress": { "type": "string" },
-        "originName": { "type": "string" },
-        "status": { "type": "string" },
-        "driverId": { "type": "string" },
-        "reward": { "type": "number" },
-        "timeEstimate": { "type": "string" },
-        "distanceEstimate": { "type": "string" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Location entity."
+        },
+        "addressLine1": {
+          "type": "string",
+          "description": "The first line of the street address."
+        },
+        "addressLine2": {
+          "type": "string",
+          "description": "The second line of the street address (e.g., apartment, suite number)."
+        },
+        "city": {
+          "type": "string",
+          "description": "The city of the address."
+        },
+        "stateProvince": {
+          "type": "string",
+          "description": "The state or province of the address."
+        },
+        "postalCode": {
+          "type": "string",
+          "description": "The postal code of the address."
+        },
+        "country": {
+          "type": "string",
+          "description": "The country of the address."
+        },
+        "latitude": {
+          "type": "number",
+          "description": "The geographical latitude of the location."
+        },
+        "longitude": {
+          "type": "number",
+          "description": "The geographical longitude of the location."
+        },
+        "contactName": {
+          "type": "string",
+          "description": "The name of the contact person at this location."
+        },
+        "contactPhoneNumber": {
+          "type": "string",
+          "description": "The phone number of the contact person at this location."
+        }
       },
-      "required": ["id", "clientName", "deliveryAddress", "status"]
+      "required": [
+        "id",
+        "addressLine1",
+        "city",
+        "stateProvince",
+        "postalCode",
+        "country",
+        "latitude",
+        "longitude"
+      ]
+    },
+    "Package": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Package",
+      "type": "object",
+      "description": "Contains detailed information about a package being delivered, such as its contents, dimensions, and tracking number.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Package entity."
+        },
+        "deliveryOrderId": {
+          "type": "string",
+          "description": "Reference to the DeliveryOrder entity this package belongs to. (Relationship: Package 1:1 DeliveryOrder)"
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the package contents."
+        },
+        "weight": {
+          "type": "number",
+          "description": "The weight of the package in a standard unit (e.g., kg, lbs)."
+        },
+        "dimensions": {
+          "type": "string",
+          "description": "The dimensions of the package (e.g., '10x15x5 cm')."
+        },
+        "fragile": {
+          "type": "boolean",
+          "description": "Indicates if the package contains fragile items."
+        },
+        "trackingNumber": {
+          "type": "string",
+          "description": "The tracking number for the package."
+        },
+        "declaredValue": {
+          "type": "number",
+          "description": "The declared monetary value of the package contents."
+        }
+      },
+      "required": [
+        "id",
+        "deliveryOrderId",
+        "description",
+        "weight",
+        "dimensions"
+      ]
+    },
+    "Notification": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Notification",
+      "type": "object",
+      "description": "Stores information about in-app alerts and notifications sent to drivers.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Notification entity."
+        },
+        "driverId": {
+          "type": "string",
+          "description": "Reference to the DriverProfile entity who is the recipient of this notification. (Relationship: DriverProfile 1:N Notification)"
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of notification (e.g., 'New Order', 'Order Update', 'Cancellation', 'Message', 'System Alert')."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title or subject of the notification."
+        },
+        "body": {
+          "type": "string",
+          "description": "The main content or message of the notification."
+        },
+        "isRead": {
+          "type": "boolean",
+          "description": "A boolean indicating whether the driver has read the notification."
+        },
+        "sentAt": {
+          "type": "string",
+          "description": "The date and time when the notification was sent.",
+          "format": "date-time"
+        },
+        "deliveryOrderId": {
+          "type": "string",
+          "description": "Optional reference to a DeliveryOrder if the notification is related to a specific order. (Relationship: Notification N:1 DeliveryOrder)"
+        }
+      },
+      "required": [
+        "id",
+        "driverId",
+        "type",
+        "title",
+        "body",
+        "isRead",
+        "sentAt"
+      ]
+    },
+    "Message": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Message",
+      "type": "object",
+      "description": "Facilitates communication between drivers, customers, and dispatch, storing chat messages or call logs.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Message entity."
+        },
+        "senderType": {
+          "type": "string",
+          "description": "The type of sender (e.g., 'Driver', 'Customer', 'Dispatcher')."
+        },
+        "senderId": {
+          "type": "string",
+          "description": "The ID of the sender. This could be a DriverProfile ID or an external ID for Customer/Dispatcher."
+        },
+        "receiverType": {
+          "type": "string",
+          "description": "The type of receiver (e.g., 'Driver', 'Customer', 'Dispatcher')."
+        },
+        "receiverId": {
+          "type": "string",
+          "description": "The ID of the receiver. This could be a DriverProfile ID or an external ID for Customer/Dispatcher."
+        },
+        "deliveryOrderId": {
+          "type": "string",
+          "description": "Optional reference to a DeliveryOrder if the message is related to a specific order. (Relationship: Message N:1 DeliveryOrder)"
+        },
+        "content": {
+          "type": "string",
+          "description": "The text content of the message."
+        },
+        "sentAt": {
+          "type": "string",
+          "description": "The date and time when the message was sent.",
+          "format": "date-time"
+        },
+        "isReadByReceiver": {
+          "type": "boolean",
+          "description": "A boolean indicating whether the receiver has read the message."
+        },
+        "messageType": {
+          "type": "string",
+          "description": "The type of communication (e.g., 'Chat', 'Call Log')."
+        }
+      },
+      "required": [
+        "id",
+        "senderType",
+        "senderId",
+        "receiverType",
+        "receiverId",
+        "content",
+        "sentAt",
+        "messageType"
+      ]
+    },
+    "RouteOptimizationLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "RouteOptimizationLog",
+      "type": "object",
+      "description": "Records the results and details of AI-powered route optimization sessions for drivers.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the RouteOptimizationLog entity."
+        },
+        "driverId": {
+          "type": "string",
+          "description": "Reference to the DriverProfile entity for whom the route was optimized. (Relationship: DriverProfile 1:N RouteOptimizationLog)"
+        },
+        "deliveryOrderIds": {
+          "type": "array",
+          "description": "An array of references to DeliveryOrder entities included in this optimized route. (Relationship: RouteOptimizationLog N:N DeliveryOrder)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "originalRouteData": {
+          "type": "string",
+          "description": "A serialized representation of the route before optimization (e.g., JSON string of waypoints)."
+        },
+        "optimizedRouteData": {
+          "type": "string",
+          "description": "A serialized representation of the optimized route (e.g., JSON string of waypoints)."
+        },
+        "optimizationTimestamp": {
+          "type": "string",
+          "description": "The date and time when the route optimization was performed.",
+          "format": "date-time"
+        },
+        "efficiencyImprovementPercentage": {
+          "type": "number",
+          "description": "The percentage improvement in efficiency (e.g., reduced distance or time) achieved by the optimization."
+        },
+        "estimatedTimeSavedMinutes": {
+          "type": "number",
+          "description": "The estimated number of minutes saved by using the optimized route."
+        },
+        "algorithmUsed": {
+          "type": "string",
+          "description": "The name or version of the AI algorithm used for optimization."
+        }
+      },
+      "required": [
+        "id",
+        "driverId",
+        "deliveryOrderIds",
+        "optimizationTimestamp",
+        "optimizedRouteData"
+      ]
     }
   },
   "auth": {
-    "providers": ["anonymous"]
+    "providers": [
+      "password",
+      "anonymous",
+      "google.com"
+    ]
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": "User",
-      "description": "User profiles."
-    },
-    "/alerts/{alertId}": {
-      "schema": "Alert",
-      "description": "Community alerts."
-    },
-    "/alerts/{alertId}/messages/{messageId}": {
-      "schema": "AlertMessage",
-      "description": "Messages for an alert."
-    },
-    "/orders/{orderId}": {
-      "schema": "Order",
-      "description": "Delivery orders."
-    }
+    "structure": [
+      {
+        "path": "/driverProfiles/{driverId}",
+        "definition": {
+          "entityName": "DriverProfile",
+          "schema": {
+            "$ref": "#/backend/entities/DriverProfile"
+          },
+          "description": "Stores individual driver profiles. Each document ID '{driverId}' corresponds directly to the Firebase Authentication UID of the driver. This structure ensures explicit path-based ownership for a driver's private data, making authorization rules simple and highly debuggable. The 'externalUserId' field within the document will explicitly match the document ID and 'request.auth.uid', reinforcing authorization independence.",
+          "params": [
+            {
+              "name": "driverId",
+              "description": "The unique Firebase Authentication UID of the driver."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/driverProfiles/{driverId}/vehicles/{vehicleId}",
+        "definition": {
+          "entityName": "Vehicle",
+          "schema": {
+            "$ref": "#/backend/entities/Vehicle"
+          },
+          "description": "Stores vehicle details for a specific driver. Each vehicle document is nested under the owning driver's profile, providing clear, path-based ownership. The 'driverId' field within the document is denormalized to match the parent path parameter '{driverId}' and 'request.auth.uid', ensuring authorization independence and enabling efficient, secure list queries (QAPs) for a driver's vehicles.",
+          "params": [
+            {
+              "name": "driverId",
+              "description": "The unique Firebase Authentication UID of the driver."
+            },
+            {
+              "name": "vehicleId",
+              "description": "The unique identifier for the vehicle."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/driverProfiles/{driverId}/deliveryOrders/{orderId}",
+        "definition": {
+          "entityName": "DeliveryOrder",
+          "schema": {
+            "$ref": "#/backend/entities/DeliveryOrder"
+          },
+          "description": "Manages individual delivery orders assigned to a specific driver. This hierarchical structure ensures that all order-related operations are scoped to the authenticated driver. The 'driverId' field within the document is denormalized to match the '{driverId}' in the path and 'request.auth.uid', achieving Authorization Independence and facilitating secure listing of orders (QAPs) for the driver.",
+          "params": [
+            {
+              "name": "driverId",
+              "description": "The unique Firebase Authentication UID of the driver."
+            },
+            {
+              "name": "orderId",
+              "description": "The unique identifier for the delivery order."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/driverProfiles/{driverId}/deliveryOrders/{orderId}/pickupLocation",
+        "definition": {
+          "entityName": "Location",
+          "schema": {
+            "$ref": "#/backend/entities/Location"
+          },
+          "description": "Stores the pickup location details for a specific delivery order. Nested under the order and driver, this design denormalizes location data for each driver's order. The document will include denormalized 'driverId' (matching the path's '{driverId}') and 'deliveryOrderId' (matching the path's '{orderId}') to ensure Authorization Independence, allowing rules to verify access directly from the document data without cross-collection 'get()' calls. This approach supports QAPs by making access implicitly scoped.",
+          "params": [
+            {
+              "name": "driverId",
+              "description": "The unique Firebase Authentication UID of the driver."
+            },
+            {
+              "name": "orderId",
+              "description": "The unique identifier for the delivery order."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/driverProfiles/{driverId}/deliveryOrders/{orderId}/deliveryLocation",
+        "definition": {
+          "entityName": "Location",
+          "schema": {
+            "$ref": "#/backend/entities/Location"
+          },
+          "description": "Stores the delivery location details for a specific delivery order. Nested under the order and driver, this design denormalizes location data for each driver's order. The document will include denormalized 'driverId' (matching the path's '{driverId}') and 'deliveryOrderId' (matching the path's '{orderId}') to ensure Authorization Independence, allowing rules to verify access directly from the document data without cross-collection 'get()' calls. This approach supports QAPs by making access implicitly scoped.",
+          "params": [
+            {
+              "name": "driverId",
+              "description": "The unique Firebase Authentication UID of the driver."
+            },
+            {
+              "name": "orderId",
+              "description": "The unique identifier for the delivery order."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/driverProfiles/{driverId}/deliveryOrders/{orderId}/package",
+        "definition": {
+          "entityName": "Package",
+          "schema": {
+            "$ref": "#/backend/entities/Package"
+          },
+          "description": "Contains package details for a specific delivery order. Nested within the order and driver, this structure denormalizes package information. The document will include denormalized 'driverId' (matching the path's '{driverId}') and 'deliveryOrderId' (matching the path's '{orderId}') to ensure Authorization Independence and efficient QAPs, without needing 'get()' operations to check parent permissions.",
+          "params": [
+            {
+              "name": "driverId",
+              "description": "The unique Firebase Authentication UID of the driver."
+            },
+            {
+              "name": "orderId",
+              "description": "The unique identifier for the delivery order."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/driverProfiles/{driverId}/notifications/{notificationId}",
+        "definition": {
+          "entityName": "Notification",
+          "schema": {
+            "$ref": "#/backend/entities/Notification"
+          },
+          "description": "Manages in-app alerts and notifications specific to a driver. Nested under the driver's profile, this ensures that each driver can only access their own notifications. The 'driverId' field within the document is denormalized, matching the path's '{driverId}' and 'request.auth.uid', providing Authorization Independence and secure QAPs for notification lists.",
+          "params": [
+            {
+              "name": "driverId",
+              "description": "The unique Firebase Authentication UID of the driver."
+            },
+            {
+              "name": "notificationId",
+              "description": "The unique identifier for the notification."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/driverProfiles/{driverId}/messages/{messageId}",
+        "definition": {
+          "entityName": "Message",
+          "schema": {
+            "$ref": "#/backend/entities/Message"
+          },
+          "description": "Facilitates direct communication (chat/call logs) for a specific driver. Nested under the driver's profile, messages can be order-related (with 'deliveryOrderId' field) or general. The document will include denormalized 'driverId' (matching path and 'request.auth.uid'), 'senderId', and 'receiverId' to ensure Authorization Independence and support QAPs, allowing a driver to access only messages where they are the sender or receiver.",
+          "params": [
+            {
+              "name": "driverId",
+              "description": "The unique Firebase Authentication UID of the driver."
+            },
+            {
+              "name": "messageId",
+              "description": "The unique identifier for the message."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/driverProfiles/{driverId}/routeOptimizationLogs/{logId}",
+        "definition": {
+          "entityName": "RouteOptimizationLog",
+          "schema": {
+            "$ref": "#/backend/entities/RouteOptimizationLog"
+          },
+          "description": "Records AI-powered route optimization results specific to a driver. Nested under the driver's profile, this structure ensures that each driver can only access their own optimization logs. The 'driverId' field within the document is denormalized to match the path's '{driverId}' and 'request.auth.uid', providing Authorization Independence and secure QAPs for log lists.",
+          "params": [
+            {
+              "name": "driverId",
+              "description": "The unique Firebase Authentication UID of the driver."
+            },
+            {
+              "name": "logId",
+              "description": "The unique identifier for the route optimization log."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_admin/{adminId}",
+        "definition": {
+          "entityName": "AdminRole",
+          "schema": {
+            "$ref": "#/backend/entities/DriverProfile"
+          },
+          "description": "A top-level collection used for Database Access Control (DBAC) to define system administrators. The existence of a document at this path signifies that the '{adminId}' (Firebase Auth UID) holds an administrator role. Access is determined by document existence, avoiding 'get()' calls for authorization checks (except for the initial role check). Note: 'DriverProfile' schema is used as a placeholder for a simple document indicating existence; the actual document content can be minimal.",
+          "params": [
+            {
+              "name": "adminId",
+              "description": "The unique Firebase Authentication UID of an administrator."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure for RutaRápida Driver prioritizes **Authorization Independence** and **Queryable Authorization Patterns (QAPs)** by adopting a deeply hierarchical, driver-centric model. All driver-specific data is nested under `/driverProfiles/{driverId}`, where `{driverId}` directly corresponds to the authenticated user's Firebase UID (`request.auth.uid`).\n\n**Authorization Independence via Denormalization (Mandate A):**\nTo eliminate the need for costly and complex `get()` calls in security rules, every document that is part of a subcollection of `/driverProfiles/{driverId}` will contain a denormalized `driverId` field in its data. This `driverId` field will explicitly match the `{driverId}` in its parent path, as well as `request.auth.uid`. For example, `DeliveryOrder` documents under `/driverProfiles/{driverId}/deliveryOrders/{orderId}` will have `resource.data.driverId == driverId`. This strategy is applied across `Vehicle`, `DeliveryOrder`, `Notification`, `Message`, and `RouteOptimizationLog` entities. This ensures that security rules can always determine authorization directly from the `request.auth.uid` and the document itself, rather than needing to inspect parent documents.\n\nCritically, for entities like `Location` and `Package`, which are referenced by `DeliveryOrder` but don't inherently contain a `driverId` in their base schema, a key denormalization strategy is applied. Instead of keeping them as global collections that would require `get()` calls to check associated `DeliveryOrder` permissions, they are structured as subcollections of `DeliveryOrder` (e.g., `/driverProfiles/{driverId}/deliveryOrders/{orderId}/pickupLocation`). Within these nested `Location` and `Package` documents, the `driverId` and `deliveryOrderId` are explicitly denormalized. This ensures that a driver's access to a specific `pickupLocation`, `deliveryLocation`, or `package` is always verified directly from the document's own data and path, adhering strictly to the Authorization Independence principle.\n\n**Queryable Authorization Patterns (QAPs) (Principle 4):**\nThe hierarchical structure directly supports efficient and secure `list` operations (QAPs).\n*   **Driver-Specific Data**: By nesting all personal data and assigned work under `/driverProfiles/{driverId}`, a driver can query their own `vehicles`, `deliveryOrders`, `notifications`, `messages`, and `routeOptimizationLogs` by simply referencing their `uid` in the path. Security rules can then easily enforce `allow list: if request.auth.uid == driverId;`, ensuring that `list` operations automatically filter to only show data owned by the authenticated driver without exposing other drivers' information.\n*   **Denormalization for Filtering**: The denormalized `driverId` field within documents allows for server-side `where('driverId', '==', request.auth.uid)` clauses, which are fully supported by security rules, guaranteeing that complex queries within a driver's scope remain secure and efficient.\n\n**DBAC (Database Access Control) (Principle 3):**\nGlobal roles, such as 'admin', are managed using dedicated top-level collections like `/roles_admin/{adminId}`. The mere existence of a document at `/roles_admin/$(request.auth.uid)` grants the user administrative privileges. This avoids custom claims and utilizes Firestore's inherent existence checks, satisfying the DBAC principle and providing a clear, debuggable mechanism for role-based access.\n\n**Structural Segregation (Mandate B):**\nEach collection path is designed to hold documents with a homogeneous security posture. For example, a driver's `notifications` are distinct from their `deliveryOrders`, but both are private to the driver. This simplifies security rules by dedicating specific access patterns to specific data locations.\n\n**Data Clarity and Predictability (Mandate D):**\n*   **Explicit State**: `DeliveryOrder` uses a dedicated `status` field for clear state management.\n*   **Predictable Schema**: Dynamic keys are avoided.\n*   **Radical Consistency**: Wildcards are descriptive (e.g., `{driverId}`, `{orderId}`), and authorization fields like `driverId` are consistently used for ownership."
   }
 }
