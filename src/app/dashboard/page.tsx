@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -320,6 +321,11 @@ export default function DashboardPage() {
   const activeOrder = useMemo(() => driverActiveOrders?.[0], [driverActiveOrders])
   const isCentralLayout = useMemo(() => activeTab === 'central', [activeTab])
   const hasActiveSOS = useMemo(() => alerts?.some(a => a.type === 'sos') || false, [alerts])
+  const filteredAlerts = useMemo(() => {
+    if (!alerts) return []
+    if (alertFilter === 'mine' && user?.uid) return alerts.filter(a => a.authorId === user.uid)
+    return alerts
+  }, [alerts, alertFilter, user?.uid])
 
   // --- 2. EFFECTS ---
   useEffect(() => {
