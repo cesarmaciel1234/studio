@@ -1,9 +1,8 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Regla de desarrollo: Permite acceso a usuarios autenticados para evitar errores de permisos 
-    // en la creación de perfiles iniciales de Empresa y Repartidor.
+    // Permite lectura y escritura a cualquier usuario autenticado
+    // para facilitar el desarrollo y evitar errores de permisos en perfiles.
     match /{document=**} {
       allow read, write: if request.auth != null;
     }
