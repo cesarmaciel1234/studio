@@ -88,7 +88,7 @@ import { useToast } from "@/hooks/use-toast"
 import { format } from "date-fns"
 import { CapoAssistant } from "@/components/dashboard/CapoAssistant"
 
-// Importación dinámica del mapa
+// Importación dinámica del mapa para evitar errores de SSR
 const InteractiveMap = dynamic(() => import('@/components/dashboard/InteractiveMap'), {
   ssr: false,
   loading: () => <div className="h-full w-full bg-slate-900 flex items-center justify-center">
@@ -96,7 +96,9 @@ const InteractiveMap = dynamic(() => import('@/components/dashboard/InteractiveM
   </div>
 });
 
-// Componentes auxiliares locales
+/**
+ * Componente para renderizar una alerta en el feed comunitario (Coro Driver).
+ */
 const CoroItem = ({ alert, userId }: { alert: any, userId: string }) => {
   const isSOS = alert.type === 'sos';
   const Icon = alert.type === 'policia' ? ShieldAlert : 
@@ -165,38 +167,6 @@ const DriverOrderCard = ({ order, index, onOpenChat }: any) => {
   )
 }
 
-const AdminOrderItem = ({ order, onCenterMap, onOpenChat }: any) => {
-  return (
-    <Card className="rounded-[32px] border-none shadow-sm bg-white overflow-hidden mb-3">
-      <div className="p-4 flex items-center gap-4">
-        <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center">
-          <Truck className="w-5 h-5 text-slate-400" />
-        </div>
-        <div className="flex-1 text-left min-w-0">
-          <h4 className="font-black text-slate-900 text-xs uppercase truncate">{order.clientName}</h4>
-          <p className="text-[9px] font-bold text-slate-400 uppercase truncate">{order.deliveryAddress}</p>
-        </div>
-        <div className="flex gap-2">
-           <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onCenterMap(order.deliveryLatitude, order.deliveryLongitude)}><MapPin className="w-4 h-4" /></Button>
-           <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onOpenChat(order.id)}><MessageSquare className="w-4 h-4" /></Button>
-        </div>
-      </div>
-    </Card>
-  )
-}
-
-const LocationPickerMap = ({ onLocationSelect }: any) => (
-  <div className="h-[400px] w-full bg-slate-100 flex items-center justify-center relative">
-    <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">Mapa de Selección de Ubicación</p>
-    <Button 
-      className="absolute bottom-6 h-12 rounded-full px-8 bg-slate-900 text-white font-black"
-      onClick={() => onLocationSelect(19.4326, -99.1332, "Centro Histórico, CDMX")}
-    >
-      Confirmar Ubicación
-    </Button>
-  </div>
-)
-
 const LoginScreen = () => (
   <div className="h-screen w-full flex flex-col items-center justify-center bg-slate-900 p-8 text-center space-y-8">
      <div className="w-24 h-24 bg-blue-600 rounded-[32px] flex items-center justify-center shadow-2xl shadow-blue-500/20">
@@ -231,21 +201,10 @@ export default function DashboardPage() {
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false)
 
   // Estados de Negocio
-  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([])
-  const [isCreatingOrder, setIsCreatingOrder] = useState(false)
-  const [alertDescription, setAlertDescription] = useState("")
   const [selectedAlertType, setSelectedAlertType] = useState<{id: string, label: string} | null>(null)
+  const [alertDescription, setAlertDescription] = useState("")
   const [selectedChatOrderId, setSelectedChatOrderId] = useState<string | null>(null)
   const [chatMessageText, setChatMessageText] = useState("")
-  const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false)
-  
-  // Campos de Nuevo Pedido
-  const [newClientName, setNewClientName] = useState("")
-  const [newDelivery, setNewDelivery] = useState("")
-  const [newDeliveryCoords, setNewDeliveryCoords] = useState<{lat: number, lng: number} | null>(null)
-  const [newOfferedPrice, setNewOfferedPrice] = useState("")
-  const [newPickupTime, setNewPickupTime] = useState("Inmediato")
-  const [newPkgDescription, setNewPkgDescription] = useState("")
 
   // Refs para chat scroll
   const chatScrollRef = useRef<HTMLDivElement>(null)
@@ -267,13 +226,14 @@ export default function DashboardPage() {
     }
   }, [])
 
+  // Auto-scroll del chat
   useEffect(() => {
     if (chatScrollRef.current) {
       chatScrollRef.current.scrollTo(0, chatScrollRef.current.scrollHeight)
     }
   }, [selectedChatOrderId, chatMessageText])
 
-  // Firebase Data Queries
+  // Firebase Data Queries - Solo se ejecutan si hay un usuario autenticado
   const userRef = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
     return doc(firestore, "users", user.uid);
@@ -334,37 +294,16 @@ export default function DashboardPage() {
     }
   }, [activeOrder, isNavigating])
 
-  // Handlers
-  const handleCreateOrder = () => {
-    if (!user?.uid || !firestore || !newClientName || !newDeliveryCoords) return
-    setIsCreatingOrder(true)
-    addDocumentNonBlocking(collection(firestore, "orders"), {
-      clientName: newClientName,
-      deliveryAddress: newDelivery,
-      deliveryLatitude: newDeliveryCoords.lat,
-      deliveryLongitude: newDeliveryCoords.lng,
-      pickupAddress: "Sede Central Biz",
-      pickupLatitude: currentCoords?.lat || 19.4326,
-      pickupLongitude: currentCoords?.lng || -99.1332,
-      offeredPrice: Number(newOfferedPrice),
-      estimatedPickupWindow: newPickupTime,
-      packageDescription: newPkgDescription,
-      status: "Pending",
-      companyId: user.uid,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    })
-    setNewClientName(""); setNewDelivery(""); setNewOfferedPrice(""); setNewPkgDescription("");
-    setIsCreatingOrder(false); setActiveTab('ruta');
-    toast({ title: "Pedido Publicado" })
-  }
-
+  /**
+   * Publica una alerta en tiempo real en la zona actual del conductor.
+   */
   const handlePublishAlert = () => {
     if (!selectedAlertType || !user?.uid || !firestore) return
     if (!currentCoords) {
       toast({ title: "Error GPS", description: "No se detectó tu ubicación.", variant: "destructive" })
       return
     }
+
     addDocumentNonBlocking(collection(firestore, "alerts"), {
       type: selectedAlertType.id,
       label: selectedAlertType.label,
@@ -378,7 +317,9 @@ export default function DashboardPage() {
       updatedAt: new Date().toISOString(),
       status: "Active"
     })
-    setAlertDescription(""); setSelectedAlertType(null);
+    
+    setAlertDescription("")
+    setSelectedAlertType(null)
     toast({ title: "Reporte Vial Publicado" })
   }
 
@@ -392,12 +333,6 @@ export default function DashboardPage() {
     toast({ title: "Pedido Asignado" })
   }
 
-  const handleAdminCenterMap = (lat: number, lng: number) => {
-    setCurrentCoords({ lat, lng })
-    setMapCenterTrigger(p => p + 1)
-    setIsExpanded(false)
-  }
-
   const handleSendChatMessage = () => {
     if (!selectedChatOrderId || !chatMessageText.trim() || !user?.uid || !firestore) return
     addDocumentNonBlocking(collection(firestore, `orders/${selectedChatOrderId}/chatMessages`), {
@@ -409,28 +344,16 @@ export default function DashboardPage() {
     setChatMessageText("")
   }
 
-  const handleClearAllAlerts = () => {
-    if (!firestore || !alerts) return
-    alerts.forEach(alert => {
-      deleteDocumentNonBlocking(doc(firestore, "alerts", alert.id))
-    })
-    toast({ title: "Alertas eliminadas" })
-  }
-
-  const safeFormat = (dateStr: string, pattern: string) => {
-    try { return format(new Date(dateStr), pattern) } catch { return "" }
-  }
-
-  const hasActiveSOS = useMemo(() => alerts?.some(a => a.type === 'sos') || false, [alerts])
-
   if (!mounted) return null
   if (isUserLoading || (user && isUserDataLoading)) return <div className="h-screen w-full flex items-center justify-center bg-slate-900 text-white"><Loader2 className="animate-spin" /></div>
   if (!user) return <LoginScreen />
 
+  const hasActiveSOS = useMemo(() => alerts?.some(a => a.type === 'sos') || false, [alerts])
   const sheetY = isMapFullscreen ? 'calc(100% - 40px)' : (isExpanded ? '0' : 'calc(100% - 160px)')
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-slate-50">
+      {/* MAPA INTERACTIVO (Z-0) */}
       <div className="absolute inset-0 z-0">
         <InteractiveMap 
           center={currentCoords ? [currentCoords.lat, currentCoords.lng] : [19.4326, -99.1332]} 
@@ -445,6 +368,7 @@ export default function DashboardPage() {
         />
       </div>
 
+      {/* BOTÓN MENÚ LATERAL (TOP LEFT) */}
       <div className="absolute top-8 left-8 z-10">
         <Sheet>
           <SheetTrigger asChild>
@@ -481,7 +405,7 @@ export default function DashboardPage() {
                   <div className="h-11 w-11 rounded-[0.8rem] bg-blue-50 flex items-center justify-center shadow-sm">
                     <Package className="h-5 w-5 text-blue-500" />
                   </div>
-                  <span className="text-md font-bold text-slate-700">Pedidos: Pendientes y entregados</span>
+                  <span className="text-md font-bold text-slate-700">Historial Pedidos</span>
                 </Link>
                 <Link href="/messages" className="flex items-center gap-4 group">
                   <div className="h-11 w-11 rounded-[0.8rem] bg-purple-50 flex items-center justify-center shadow-sm">
@@ -496,12 +420,14 @@ export default function DashboardPage() {
         </Sheet>
       </div>
 
-      <div className="absolute right-8 top-8 z-10 flex flex-col gap-4">
+      {/* BOTÓN ASISTENTE CAPO (TOP RIGHT) */}
+      <div className="absolute right-8 top-8 z-10">
         <Button size="icon" onClick={() => setIsAiAssistantOpen(true)} className="h-16 w-16 rounded-[1.5rem] shadow-2xl bg-blue-600 text-white border-none hover:bg-blue-700">
           <Sparkles className="h-8 w-8" />
         </Button>
       </div>
 
+      {/* BOTONES DE CONTROL DE MAPA (BOTTOM RIGHT - SOBRE EL PANEL) */}
       <div className="absolute right-8 bottom-32 flex flex-col gap-3 z-10">
         <Button size="icon" variant="secondary" onClick={() => setIsNavigating(!isNavigating)} className={cn("h-12 w-12 rounded-full shadow-xl transition-all", isNavigating ? "bg-blue-600 text-white" : "bg-white text-slate-600")}>
           <Navigation className="h-5 w-5" />
@@ -514,6 +440,7 @@ export default function DashboardPage() {
         </Button>
       </div>
 
+      {/* OVERLAY DE ASISTENTE CAPO */}
       {isAiAssistantOpen && (
         <div className="absolute inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-8 animate-in fade-in duration-300">
           <div className="w-full max-w-2xl h-[80vh]">
@@ -522,11 +449,14 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* PANEL DESLIZABLE INFERIOR (Z-20) */}
       <div className={cn("absolute inset-x-0 bottom-0 bg-white shadow-[0_-20px_50px_rgba(0,0,0,0.1)] rounded-t-[3.5rem] transition-all duration-500 ease-in-out z-20 overflow-hidden flex flex-col", sheetY === '0' ? "top-20" : sheetY === 'calc(100% - 40px)' ? "top-[calc(100%-40px)]" : "top-1/2")}>
         <div className="h-12 w-full flex items-center justify-center cursor-pointer active:bg-slate-50" onClick={() => setIsExpanded(!isExpanded)}>
           <div className={cn("w-16 h-1.5 rounded-full mb-8", hasActiveSOS ? "bg-red-600 animate-pulse" : "bg-slate-200")}></div>
         </div>
+        
         <div className="flex-1 overflow-y-auto px-8 pb-12 scrollbar-hide">
+          {/* NAVEGACIÓN DEL PANEL */}
           <div className="flex justify-center mb-10 sticky top-0 bg-white pt-2 pb-4 z-30">
             <div className="bg-slate-50 p-2 rounded-[2.5rem] flex items-center gap-2 shadow-inner border border-slate-100">
               <Button variant="ghost" size="icon" onClick={() => setActiveTab("ruta")} className={cn("h-16 w-20 rounded-[1.8rem]", activeTab === "ruta" ? "bg-slate-900 text-white" : "text-slate-400")}><Truck className="h-7 w-7" /></Button>
@@ -535,10 +465,12 @@ export default function DashboardPage() {
               <Button variant="ghost" size="icon" onClick={() => setActiveTab("alerta")} className={cn("h-16 w-20 rounded-[1.8rem]", activeTab === "alerta" ? "bg-slate-900 text-white" : "text-slate-400")}><ShieldAlert className="h-7 w-7" /></Button>
             </div>
           </div>
+
+          {/* CONTENIDO DE PESTAÑAS */}
           {activeTab === 'ruta' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-left">
               <div className="bg-slate-950 rounded-[3rem] p-10 text-white shadow-2xl mb-8">
-                <h1 className="text-4xl font-black tracking-tighter uppercase mb-8">{isAdmin ? "Flota Empresa" : "Mi Ruta Pro"}</h1>
+                <h1 className="text-4xl font-black tracking-tighter uppercase mb-8">Mi Ruta Pro</h1>
                 <div className="grid grid-cols-2 gap-6">
                   <div className="bg-slate-900/50 rounded-[2.5rem] p-8 border border-slate-800 flex flex-col items-center">
                     <span className="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">PEDIDOS</span>
@@ -557,6 +489,7 @@ export default function DashboardPage() {
               </div>
             </div>
           )}
+
           {activeTab === 'pedidos' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-left">
               <h2 className="text-3xl font-black tracking-tighter uppercase mb-6">Pedidos Disponibles</h2>
@@ -576,14 +509,14 @@ export default function DashboardPage() {
               </div>
             </div>
           )}
+
           {activeTab === 'alerta' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-left">
               <header className="flex items-center justify-between mb-10">
                 <h2 className="text-3xl font-black tracking-tighter uppercase">Coro Driver</h2>
-                {isAdmin && alerts && alerts.length > 0 && (
-                  <Button variant="ghost" onClick={handleClearAllAlerts} className="text-red-500 font-bold uppercase text-[10px]"><Trash2 className="w-4 h-4 mr-2" /> Limpiar</Button>
-                )}
               </header>
+              
+              {/* SELECTOR DE TIPO DE ALERTA */}
               <div className="flex gap-4 mb-12 overflow-x-auto pb-4 scrollbar-hide">
                 {[
                   { id: "policia", label: "CONTROL", icon: ShieldAlert, bg: "bg-blue-50", color: "text-blue-600" },
@@ -612,6 +545,8 @@ export default function DashboardPage() {
                   </Dialog>
                 ))}
               </div>
+
+              {/* FEED DE ALERTAS */}
               <div className="space-y-4">
                 {alerts?.map((alert) => (
                   <CoroItem key={alert.id} alert={alert} userId={user.uid} />
@@ -619,6 +554,7 @@ export default function DashboardPage() {
               </div>
             </div>
           )}
+
           {activeTab === 'central' && (
              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-left h-full flex flex-col min-h-[500px]">
                 {selectedChatOrderId ? (
@@ -644,7 +580,7 @@ export default function DashboardPage() {
                 ) : (
                   <div className="space-y-4">
                     <h2 className="text-3xl font-black tracking-tighter uppercase mb-6 px-2">Canal de Chat</h2>
-                    {(isAdmin ? bizAllOrders?.filter(o => o.driverId) : driverActiveOrders)?.map(order => (
+                    {driverActiveOrders?.map(order => (
                       <Card key={order.id} className="rounded-[40px] border-none shadow-sm bg-slate-50/50 hover:bg-white transition-all cursor-pointer" onClick={() => setSelectedChatOrderId(order.id)}>
                         <CardContent className="p-5 flex items-center justify-between">
                           <div className="flex items-center gap-4">
