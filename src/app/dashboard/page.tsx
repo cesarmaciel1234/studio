@@ -29,7 +29,12 @@ import {
   Send,
   Loader2,
   Phone,
-  LayoutDashboard
+  LayoutDashboard,
+  Search,
+  MoreVertical,
+  ShieldCheck,
+  ChevronUp,
+  ChevronDown
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -63,6 +68,40 @@ const InteractiveMap = dynamic(() => import('@/components/dashboard/InteractiveM
 });
 
 // --- SUB-COMPONENTES ---
+
+function ChatListItem({ order, onClick, isSelected }: { order: any, onClick: () => void, isSelected: boolean }) {
+  return (
+    <Card 
+      className={cn(
+        "cursor-pointer hover:bg-white active:scale-98 transition-all border-none shadow-sm rounded-[32px] group mb-3 overflow-hidden w-full",
+        isSelected ? "bg-white ring-2 ring-blue-500/10 shadow-md" : "bg-white/60"
+      )}
+      onClick={onClick}
+    >
+      <CardContent className="p-4 flex items-center gap-4">
+        <div className="w-14 h-14 rounded-[22px] bg-slate-100 flex items-center justify-center shrink-0 border border-slate-100 group-hover:bg-blue-50 transition-colors">
+          <User className="w-6 h-6 text-slate-400 group-hover:text-blue-500" />
+        </div>
+        <div className="flex-1 min-w-0 text-left">
+          <div className="flex justify-between items-center mb-0.5">
+            <h3 className="font-black text-sm text-slate-800 truncate uppercase tracking-tight">
+              Repartidor #{order.driverId?.substring(0, 5) || 'Libre'}
+            </h3>
+            <span className="text-[8px] text-slate-400 font-bold uppercase tracking-tighter">
+              {order.updatedAt ? format(new Date(order.updatedAt), 'HH:mm') : '...'}
+            </span>
+          </div>
+          <div className="flex justify-between items-center">
+            <p className="text-[10px] text-slate-500 truncate font-bold uppercase tracking-tight">
+              #{order.id.substring(0, 5)} • {order.status}
+            </p>
+            {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
 function OrderCard({ order, onChat }: { order: any, onChat: (id: string) => void }) {
   return (
@@ -104,7 +143,6 @@ export default function DashboardPage() {
 
   // Estados
   const [activeTab, setActiveTab] = useState('gestion')
-  // panelPosition: 'bottom' (piso), 'middle' (medio), 'top' (techo)
   const [panelPosition, setPanelPosition] = useState<'bottom' | 'middle' | 'top'>('bottom')
   const [mounted, setMounted] = useState(false)
   const [mapCenterTrigger, setMapCenterTrigger] = useState(0)
@@ -204,7 +242,7 @@ export default function DashboardPage() {
     return (
       <div className="h-screen w-full flex flex-col items-center justify-center bg-slate-900 text-white gap-4">
         <Loader2 className="w-12 h-12 animate-spin text-blue-500" />
-        <p className="font-black text-[10px] uppercase tracking-widest animate-pulse">Sincronizando Sistema de Empresa...</p>
+        <p className="font-black text-[10px] uppercase tracking-widest animate-pulse">Sincronizando Sistema Central...</p>
       </div>
     )
   }
@@ -219,7 +257,7 @@ export default function DashboardPage() {
           </Button>
           <div className="flex-1 text-left">
             <h1 className="text-5xl font-black tracking-tighter text-slate-900 uppercase">Central</h1>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Historial de Mensajería Privada</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Historial de Coordinación</p>
           </div>
         </header>
 
@@ -228,9 +266,9 @@ export default function DashboardPage() {
             <div className="h-full flex flex-col bg-white rounded-[3rem] shadow-xl overflow-hidden">
                <header className="flex items-center gap-4 p-8 border-b border-slate-50">
                   <Button variant="ghost" size="icon" onClick={() => setSelectedChatOrderId(null)} className="rounded-full h-12 w-12 bg-slate-50"><ChevronLeft className="w-6 h-6" /></Button>
-                  <div className="text-left">
+                  <div className="text-left text-slate-900">
                     <h2 className="text-xl font-black uppercase">Orden #{selectedChatOrderId.substring(0, 5)}</h2>
-                    <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Chat Directo con Repartidor</p>
+                    <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Canal Directo</p>
                   </div>
                 </header>
                 <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-8 space-y-4 bg-slate-50/30 scrollbar-hide">
@@ -252,19 +290,18 @@ export default function DashboardPage() {
             <div className="max-w-4xl mx-auto space-y-4">
                {activeOrders.filter(o => o.driverId).length > 0 ? (
                  activeOrders.filter(o => o.driverId).map(order => (
-                   <Card key={order.id} className="rounded-[2.5rem] border-none shadow-sm bg-white p-6 cursor-pointer hover:bg-slate-50 transition-all" onClick={() => setSelectedChatOrderId(order.id)}>
-                     <div className="flex items-center gap-4">
-                       <Avatar className="h-14 w-14 rounded-2xl"><AvatarFallback className="bg-slate-900 text-white font-black">R</AvatarFallback></Avatar>
-                       <div className="flex-1 text-left">
-                         <h4 className="font-black text-lg uppercase tracking-tight">Orden #{order.id.substring(0, 5)}</h4>
-                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{order.clientName} • {order.status}</p>
-                       </div>
-                       <div className="h-12 w-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600"><MessageSquare className="w-5 h-5" /></div>
-                     </div>
-                   </Card>
+                   <ChatListItem 
+                     key={order.id} 
+                     order={order} 
+                     onClick={() => setSelectedChatOrderId(order.id)}
+                     isSelected={selectedChatOrderId === order.id}
+                   />
                  ))
                ) : (
-                 <div className="py-20 opacity-30 text-center"><MessageSquare className="w-16 h-16 mx-auto mb-4" /><p className="text-xs font-black uppercase tracking-widest">No hay chats activos con la flota.</p></div>
+                 <div className="py-20 opacity-30 text-center text-slate-900">
+                   <MessageSquare className="w-16 h-16 mx-auto mb-4" />
+                   <p className="text-xs font-black uppercase tracking-widest">No hay conversaciones activas.</p>
+                 </div>
                )}
             </div>
           )}
@@ -273,7 +310,7 @@ export default function DashboardPage() {
     )
   }
 
-  // VISTA DASHBOARD PRINCIPAL (MAPA + GESTIÓN)
+  // VISTA DASHBOARD PRINCIPAL (MAPA + PANEL)
   return (
     <div className="relative h-screen w-full overflow-hidden bg-slate-50">
       <div className="absolute inset-0 z-0">
@@ -296,31 +333,31 @@ export default function DashboardPage() {
           <SheetContent side="left" className="w-[320px] p-8 border-none bg-white/80 backdrop-blur-xl shadow-2xl rounded-r-[48px] flex flex-col">
             <SheetHeader className="text-left mb-8">
               <Avatar className="w-20 h-20 mb-4 border-4 border-white shadow-xl"><AvatarFallback className="bg-slate-900 text-white font-black">EM</AvatarFallback></Avatar>
-              <SheetTitle className="text-3xl font-black uppercase tracking-tighter leading-none">{userData?.firstName || "Empresa"}</SheetTitle>
-              <Badge className="bg-blue-600 text-white border-none font-black text-[8px] tracking-[0.3em] w-fit">PERFIL LOGÍSTICO</Badge>
+              <SheetTitle className="text-3xl font-black uppercase tracking-tighter leading-none text-slate-900">{userData?.firstName || "Empresa"}</SheetTitle>
+              <Badge className="bg-blue-600 text-white border-none font-black text-[8px] tracking-[0.3em] w-fit">ADMIN LOGÍSTICA</Badge>
             </SheetHeader>
             <div className="flex-1 space-y-4 pt-4">
-              <Button variant="ghost" className="w-full justify-start gap-4 h-14 rounded-2xl text-slate-700 font-bold" onClick={() => { setActiveTab('gestion'); setPanelPosition('middle'); }}><Package className="w-5 h-5" /> Gestión de Pedidos</Button>
-              <Button variant="ghost" className="w-full justify-start gap-4 h-14 rounded-2xl text-slate-700 font-bold" onClick={() => { setActiveTab('flota'); setPanelPosition('middle'); }}><Users className="w-5 h-5" /> Mi Flota Activa</Button>
-              <Button variant="ghost" className="w-full justify-start gap-4 h-14 rounded-2xl text-slate-700 font-bold" onClick={() => { setActiveTab('central'); }}><MessageSquare className="w-5 h-5" /> Centro de Mensajes</Button>
+              <Button variant="ghost" className="w-full justify-start gap-4 h-14 rounded-2xl text-slate-700 font-bold" onClick={() => { setActiveTab('gestion'); setPanelPosition('middle'); }}><Package className="w-5 h-5" /> Gestión Pedidos</Button>
+              <Button variant="ghost" className="w-full justify-start gap-4 h-14 rounded-2xl text-slate-700 font-bold" onClick={() => { setActiveTab('flota'); setPanelPosition('middle'); }}><Users className="w-5 h-5" /> Mi Flota</Button>
+              <Button variant="ghost" className="w-full justify-start gap-4 h-14 rounded-2xl text-slate-700 font-bold" onClick={() => { setActiveTab('central'); }}><MessageSquare className="w-5 h-5" /> Central Mensajería</Button>
             </div>
-            <Button variant="ghost" onClick={() => signOut(auth!)} className="mt-auto h-16 rounded-3xl text-red-500 font-black hover:bg-red-50"><X className="w-5 h-5 mr-2" /> Cerrar Sesión</Button>
+            <Button variant="ghost" onClick={() => signOut(auth!)} className="mt-auto h-16 rounded-3xl text-red-500 font-black hover:bg-red-50"><X className="w-5 h-5 mr-2" /> Cerrar Sistema</Button>
           </SheetContent>
         </Sheet>
         
         <Dialog open={isCreatingOrder} onOpenChange={setIsCreatingOrder}>
           <DialogTrigger asChild>
             <Button className="h-16 px-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-black shadow-2xl pointer-events-auto border-none">
-              <Plus className="w-6 h-6 mr-3" /> NUEVO PEDIDO
+              <Plus className="w-6 h-6 mr-3" /> CREAR PEDIDO
             </Button>
           </DialogTrigger>
           <DialogContent className="rounded-[40px] border-none shadow-2xl p-8 max-w-lg bg-white/95 backdrop-blur-xl">
-             <DialogHeader className="mb-6"><DialogTitle className="text-4xl font-black uppercase tracking-tighter text-slate-900 leading-none">Crear con IA Copo</DialogTitle></DialogHeader>
+             <DialogHeader className="mb-6"><DialogTitle className="text-4xl font-black uppercase tracking-tighter text-slate-900 leading-none text-left">IA Copo Logistic</DialogTitle></DialogHeader>
              <div className="space-y-6">
-                <div className="space-y-2">
+                <div className="space-y-2 text-left">
                   <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Descripción del trayecto</Label>
                   <textarea 
-                    className="w-full min-h-[160px] bg-slate-50 border-none rounded-[2.5rem] p-8 text-sm font-medium focus:ring-2 focus:ring-blue-500/20 outline-none resize-none shadow-inner"
+                    className="w-full min-h-[160px] bg-slate-50 border-none rounded-[2.5rem] p-8 text-sm font-medium focus:ring-2 focus:ring-blue-500/20 outline-none resize-none shadow-inner text-slate-800"
                     placeholder="Ej: Recoger en Almacén Norte a las 2pm y entregar a Cliente X en Polanco..."
                     value={newOrderDescription}
                     onChange={(e) => setNewOrderDescription(e.target.value)}
@@ -328,7 +365,7 @@ export default function DashboardPage() {
                 </div>
                 <Button onClick={handleCreateOrderWithIA} disabled={isGeneratingWithAi || !newOrderDescription.trim()} className="w-full h-18 rounded-full bg-slate-950 text-white font-black text-xl shadow-xl">
                   {isGeneratingWithAi ? <RefreshCcw className="w-6 h-6 animate-spin mr-3" /> : <Sparkles className="w-6 h-6 mr-3 text-blue-400" />}
-                  {isGeneratingWithAi ? "PROCESANDO..." : "GENERAR PEDIDO"}
+                  {isGeneratingWithAi ? "PROCESANDO..." : "GENERAR CON IA"}
                 </Button>
              </div>
           </DialogContent>
@@ -347,7 +384,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* PANEL INFERIOR SLIDING (3 NIVELES: PISO, MEDIO, TECHO) */}
+      {/* PANEL INFERIOR SLIDING (PISO, MEDIO, TECHO) */}
       <div className={cn(
         "absolute inset-x-0 bottom-0 bg-white shadow-[0_-20px_60px_rgba(0,0,0,0.15)] rounded-t-[5rem] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] z-20 overflow-hidden flex flex-col", 
         panelPosition === 'top' ? "top-24" : panelPosition === 'middle' ? "top-1/2" : "top-[calc(100%-130px)]"
@@ -359,7 +396,7 @@ export default function DashboardPage() {
           
           <div className="bg-slate-900 p-2 rounded-full flex items-center gap-2 shadow-2xl scale-90 mb-2">
             <Button variant="ghost" onClick={() => { setActiveTab("gestion"); setPanelPosition('middle'); }} className={cn("h-14 flex items-center gap-3 px-10 transition-all duration-300", activeTab === "gestion" ? "bg-white text-slate-900 rounded-full" : "text-slate-400")}>
-              <Package className="h-5 w-5" />{activeTab === "gestion" && <span className="font-black text-[10px] uppercase tracking-widest">PEDIDOS</span>}
+              <Package className="h-5 w-5" />{activeTab === "gestion" && <span className="font-black text-[10px] uppercase tracking-widest">PARADERO</span>}
             </Button>
             <Button variant="ghost" onClick={() => { setActiveTab("flota"); setPanelPosition('middle'); }} className={cn("h-14 w-14 rounded-full p-0 flex items-center justify-center transition-all duration-300", activeTab === "flota" ? "bg-white text-slate-900" : "text-slate-400")}>
               <Users className="h-5 w-5" />
@@ -373,26 +410,26 @@ export default function DashboardPage() {
         <div className="flex-1 overflow-y-auto px-10 pb-20 scrollbar-hide text-left">
            {activeTab === 'gestion' && (
              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pt-6">
-                <header className="mb-10">
-                   <h2 className="text-6xl font-black tracking-tighter text-slate-900 uppercase leading-none">Control Activo</h2>
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-2">Seguimiento de pedidos en curso</p>
+                <header className="mb-10 text-slate-900">
+                   <h2 className="text-6xl font-black tracking-tighter uppercase leading-none">Paradero</h2>
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-2">Seguimiento en Tiempo Real</p>
                 </header>
 
                 <div className="grid grid-cols-2 gap-6 mb-12">
                    <div className="bg-blue-50/50 rounded-[3rem] p-10 border border-blue-100/50">
-                      <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1">EN TRÁNSITO</p>
+                      <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1">EN RUTA</p>
                       <p className="text-5xl font-black text-slate-900">{activeOrders.length}</p>
                    </div>
                    <div className="bg-emerald-50/50 rounded-[3rem] p-10 border border-emerald-100/50">
-                      <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">FLOTA LISTA</p>
+                      <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">FLOTA</p>
                       <p className="text-5xl font-black text-slate-900">{fleetDrivers?.length || 0}</p>
                    </div>
                 </div>
 
                 <div className="space-y-4">
-                   <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-6 ml-4">Listado de Operaciones</h3>
+                   <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-6 ml-4">Monitor de Pedidos</h3>
                    {activeOrders.length === 0 ? (
-                     <div className="py-20 opacity-20 text-center"><Package className="w-16 h-16 mx-auto mb-4" /><p className="text-xs font-black uppercase tracking-widest">No hay pedidos registrados hoy.</p></div>
+                     <div className="py-20 opacity-20 text-center text-slate-900"><Package className="w-16 h-16 mx-auto mb-4" /><p className="text-xs font-black uppercase tracking-widest">Sin operaciones activas.</p></div>
                    ) : (
                      activeOrders.map(order => <OrderCard key={order.id} order={order} onChat={(id) => { setSelectedChatOrderId(id); setActiveTab('central'); }} />)
                    )}
@@ -402,9 +439,9 @@ export default function DashboardPage() {
 
            {activeTab === 'flota' && (
              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pt-6">
-                <header className="mb-10 text-left">
+                <header className="mb-10 text-left text-slate-900">
                    <h2 className="text-5xl font-black tracking-tighter uppercase leading-none">Mi Flota</h2>
-                   <p className="text-blue-500 font-black text-[10px] uppercase tracking-[0.3em] mt-2">Personal en servicio activo</p>
+                   <p className="text-blue-500 font-black text-[10px] uppercase tracking-[0.3em] mt-2">Estatus de Unidades</p>
                 </header>
                 <div className="space-y-4">
                    {fleetDrivers?.map((driver) => (
@@ -412,8 +449,8 @@ export default function DashboardPage() {
                        <div className="flex items-center gap-4 text-left">
                          <Avatar className="h-16 w-16 rounded-2xl border-4 border-slate-50 shadow-sm"><AvatarImage src={driver.photoURL} /><AvatarFallback className="bg-slate-100 text-slate-900 font-black text-xl">D</AvatarFallback></Avatar>
                          <div>
-                           <h4 className="font-black text-xl uppercase tracking-tight">{driver.firstName} {driver.lastName || ''}</h4>
-                           <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" /><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ACTIVO EN RUTA</p></div>
+                           <h4 className="font-black text-xl text-slate-900 uppercase tracking-tight">{driver.firstName} {driver.lastName || ''}</h4>
+                           <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" /><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">EN SERVICIO</p></div>
                          </div>
                        </div>
                        <Button variant="ghost" size="icon" className="h-14 w-14 rounded-full bg-slate-50 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors"><Phone className="w-6 h-6" /></Button>

@@ -1,0 +1,87 @@
+
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Represents a user in the RutaRápida Pro system.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "firstName": { "type": "string" },
+        "role": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "firstName", "role", "createdAt", "updatedAt"]
+    },
+    "Alert": {
+      "title": "Alert",
+      "description": "Community alert about road conditions.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string" },
+        "label": { "type": "string" },
+        "description": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "authorId": { "type": "string" },
+        "status": { "type": "string" },
+        "likes": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "type", "label", "description", "latitude", "longitude", "authorId", "status", "createdAt"]
+    },
+    "AlertMessage": {
+      "title": "AlertMessage",
+      "description": "A message sent within a community alert context.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "content": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "authorId", "authorName", "content", "timestamp"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Represents a delivery request.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "clientName": { "type": "string" },
+        "deliveryAddress": { "type": "string" },
+        "originName": { "type": "string" },
+        "status": { "type": "string" },
+        "driverId": { "type": "string" },
+        "reward": { "type": "number" },
+        "timeEstimate": { "type": "string" },
+        "distanceEstimate": { "type": "string" }
+      },
+      "required": ["id", "clientName", "deliveryAddress", "status"]
+    }
+  },
+  "auth": {
+    "providers": ["anonymous"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles."
+    },
+    "/alerts/{alertId}": {
+      "schema": "Alert",
+      "description": "Community alerts."
+    },
+    "/alerts/{alertId}/messages/{messageId}": {
+      "schema": "AlertMessage",
+      "description": "Messages for an alert."
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Delivery orders."
+    }
+  }
+}

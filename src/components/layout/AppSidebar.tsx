@@ -14,7 +14,8 @@ import {
   MessageSquare,
   Building2,
   X,
-  Pencil
+  Pencil,
+  ShieldCheck
 } from "lucide-react"
 
 import {
@@ -70,8 +71,8 @@ export function AppSidebar() {
         </div>
 
         <div className="bg-slate-900 p-3 rounded-[1.5rem] flex items-center gap-3 mb-6 shadow-xl">
-          <div className="h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center"><ShieldAlert className="h-5 w-5 text-white" /></div>
-          <span className="text-[10px] font-black text-white uppercase tracking-widest">Sistema Activo</span>
+          <div className="h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center"><ShieldCheck className="h-5 w-5 text-white" /></div>
+          <span className="text-[10px] font-black text-white uppercase tracking-widest">Protocolo Activo</span>
         </div>
       </SidebarHeader>
 
@@ -94,7 +95,7 @@ export function AppSidebar() {
                 <div className="h-12 w-12 rounded-2xl bg-emerald-50 flex items-center justify-center shadow-sm group-hover:bg-emerald-600 transition-all">
                   <Package className="h-6 h-6 text-emerald-500 group-hover:text-white" />
                 </div>
-                <span className="text-md font-black text-slate-700 uppercase tracking-tight">Pedidos</span>
+                <span className="text-md font-black text-slate-700 uppercase tracking-tight">Paradero</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -105,7 +106,7 @@ export function AppSidebar() {
                 <div className="h-12 w-12 rounded-2xl bg-amber-50 flex items-center justify-center shadow-sm group-hover:bg-amber-600 transition-all">
                   <Users className="h-6 h-6 text-amber-500 group-hover:text-white" />
                 </div>
-                <span className="text-md font-black text-slate-700 uppercase tracking-tight">Flota</span>
+                <span className="text-md font-black text-slate-700 uppercase tracking-tight">Mi Flota</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
