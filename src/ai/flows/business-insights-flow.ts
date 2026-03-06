@@ -60,7 +60,7 @@ async function toWav(
   rate = 24000,
   sampleWidth = 2
 ): Promise<string> {
-  // Carga dinámica de wav para evitar errores de compilación en el servidor de Next.js
+  // CARGA DINÁMICA: Evita errores de empaquetado en el cliente.
   const wav = require('wav');
   return new Promise((resolve, reject) => {
     const writer = new wav.Writer({
