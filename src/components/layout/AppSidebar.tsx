@@ -22,7 +22,7 @@ interface AppSidebarProps {
 
 export function AppSidebar({ user, userData, isAdmin, alerts, auth }: AppSidebarProps) {
   return (
-    <div className="p-8 space-y-8 h-full flex flex-col">
+    <div className="p-8 space-y-8 h-full flex flex-col bg-white">
       <SheetHeader className="text-left">
         <div className="flex items-center gap-4">
           <div className="relative">

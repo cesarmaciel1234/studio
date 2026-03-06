@@ -40,8 +40,7 @@ export default function DashboardPage() {
   const firestore = useFirestore()
   const { toast } = useToast()
   
-  const [isExpanded, setIsExpanded] = useState(false)
-  const [isMapFullscreen, setIsMapFullscreen] = useState(false)
+  const [panelState, setPanelState] = useState<"piso" | "medio" | "techo">("medio")
   const [dragY, setDragY] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const startY = useRef(0)
@@ -64,6 +63,7 @@ export default function DashboardPage() {
 
   useEffect(() => { setMounted(true) }, [])
 
+  // Detección de rol unificada
   const userDocRef = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null
     return doc(firestore, "users", user.uid)
@@ -155,7 +155,6 @@ export default function DashboardPage() {
   }
 
   const handleDragStart = (y: number) => { 
-    if (isMapFullscreen) { setIsMapFullscreen(false); setIsExpanded(false); }
     setIsDragging(true); startY.current = y; 
   }
 
@@ -168,9 +167,18 @@ export default function DashboardPage() {
   const handleDragEnd = useCallback(() => {
     if (!isDragging) return
     setIsDragging(false)
-    if (Math.abs(dragY) > 60) setIsExpanded(dragY < 0)
+    
+    // Lógica de 3 niveles: Piso, Medio, Techo
+    if (dragY < -60) {
+      if (panelState === "piso") setPanelState("medio")
+      else if (panelState === "medio") setPanelState("techo")
+    } else if (dragY > 60) {
+      if (panelState === "techo") setPanelState("medio")
+      else if (panelState === "medio") setPanelState("piso")
+    }
+    
     setDragY(0)
-  }, [dragY, isDragging])
+  }, [dragY, isDragging, panelState])
 
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => handleDragMove(e.clientY)
@@ -188,7 +196,16 @@ export default function DashboardPage() {
   }, [isDragging, handleDragMove, handleDragEnd])
 
   const hasActiveSOS = alerts?.some(a => a.type === 'sos');
-  const sheetY = isMapFullscreen ? 'calc(100% - 40px)' : isExpanded ? Math.max(0, dragY) : `calc(100% - 160px + ${Math.min(0, dragY)}px)`
+  
+  // Cálculo de altura de panel
+  const getPanelTransform = () => {
+    let baseOffset = 0
+    if (panelState === "piso") baseOffset = 88 // Solo manija y pestañas visibles
+    else if (panelState === "medio") baseOffset = 50 // Mitad de pantalla
+    else baseOffset = 0 // Full pantalla
+    
+    return `translateY(calc(${baseOffset}vh + ${dragY}px))`
+  }
 
   if (!mounted) return <div className="fixed inset-0 bg-slate-900" />;
   if (isUserLoading || (user && isUserDataLoading)) return <div className="h-screen w-full flex items-center justify-center bg-slate-900"><Loader2 className="w-8 h-8 animate-spin text-blue-400 opacity-50" /></div>
@@ -239,8 +256,8 @@ export default function DashboardPage() {
                 <div className="bg-slate-900/95 backdrop-blur-md rounded-[32px] p-4 flex flex-col max-h-[70vh]">
                   <header className="px-2 flex justify-between items-center mb-4 text-white">
                     <div>
-                      <h2 className="text-xl font-black tracking-tight">Asistente Copo</h2>
-                      <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">INTELIGENCIA ACTIVA</p>
+                      <h2 className="text-xl font-black tracking-tight">Copiloto IA</h2>
+                      <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">SOPORTE ACTIVO</p>
                     </div>
                     <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-slate-400" onClick={() => setIsAiAssistantOpen(false)}><X className="w-5 h-5" /></Button>
                   </header>
@@ -264,14 +281,14 @@ export default function DashboardPage() {
         </Popover>
       </div>
 
-      <div className={cn("absolute left-0 right-0 bottom-0 z-40 transform will-change-transform", !isDragging && "transition-transform duration-500")} style={{ transform: `translateY(${sheetY})` }}>
-        <div className="h-[85vh] w-full max-w-md mx-auto bg-white/80 backdrop-blur-2xl rounded-t-[56px] shadow-[0_-20px_60px_rgba(0,0,0,0.15)] flex flex-col relative border-t border-slate-100">
+      <div className={cn("absolute left-0 right-0 bottom-0 z-40 transform will-change-transform", !isDragging && "transition-transform duration-500")} style={{ transform: getPanelTransform() }}>
+        <div className="h-screen w-full max-w-md mx-auto bg-white/80 backdrop-blur-2xl rounded-t-[56px] shadow-[0_-20px_60px_rgba(0,0,0,0.15)] flex flex-col relative border-t border-slate-100">
           <div className="w-full flex flex-col items-center pt-6 pb-4 cursor-grab active:cursor-grabbing touch-none" onMouseDown={(e) => handleDragStart(e.clientY)} onTouchStart={(e) => handleDragStart(e.touches[0].clientY)}>
             <div className={cn("w-16 h-1.5 rounded-full mb-8", hasActiveSOS ? "bg-red-600 animate-pulse" : "bg-slate-200")}></div>
             <div className="w-full px-8">
               <div className="flex bg-slate-100/50 rounded-[40px] p-2 border border-slate-50">
                 {[{id:'ruta', icon:Truck}, {id:'pedidos', icon:Layers}, {id:'central', icon:Users}, {id:'alerta', icon:ShieldAlert}].map(t => (
-                  <button key={t.id} onClick={(e) => { e.stopPropagation(); setActiveTab(t.id); setIsExpanded(true); }} className={cn("flex-1 h-14 rounded-[32px] transition-all flex items-center justify-center", activeTab === t.id ? "bg-slate-900 text-white shadow-xl" : "text-slate-400")}>
+                  <button key={t.id} onClick={(e) => { e.stopPropagation(); setActiveTab(t.id); setPanelState("techo"); }} className={cn("flex-1 h-14 rounded-[32px] transition-all flex items-center justify-center", activeTab === t.id ? "bg-slate-900 text-white shadow-xl" : "text-slate-400")}>
                     <t.icon className="w-6 h-6" />
                   </button>
                 ))}
@@ -285,10 +302,10 @@ export default function DashboardPage() {
                 {isAdmin ? (
                   <div className="space-y-6">
                     <div className="bg-slate-900 rounded-[48px] p-10 text-white shadow-2xl">
-                      <h2 className="text-3xl font-black tracking-tighter">Logística Pro</h2>
+                      <h2 className="text-3xl font-black tracking-tighter">Logística Central</h2>
                       <div className="grid grid-cols-2 gap-4 mt-6">
                         <div className="bg-white/5 rounded-3xl p-4 border border-white/10 text-center">
-                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">DRIVERS</p>
+                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">REPARTIDORES</p>
                           <p className="text-2xl font-black text-emerald-400">{fleetData?.length || 0}</p>
                         </div>
                         <div className="bg-white/5 rounded-3xl p-4 border border-white/10 text-center">
@@ -322,10 +339,10 @@ export default function DashboardPage() {
                   <div key={order.id} className="bg-white rounded-[32px] p-6 shadow-xl border border-slate-50">
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">PAGO DIRECTO</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">TARIFA PRO</p>
                         <p className="text-2xl font-black text-emerald-600 tracking-tighter">${order.offeredPrice || '1,200'}</p>
                       </div>
-                      <Badge className="bg-blue-50 text-blue-600 border-none font-black text-[9px] uppercase tracking-widest">HOY</Badge>
+                      <Badge className="bg-blue-50 text-blue-600 border-none font-black text-[9px] uppercase tracking-widest">EXPRESO</Badge>
                     </div>
                     <div className="flex items-center gap-3">
                       <MapPin className="w-4 h-4 text-slate-300" />
@@ -340,7 +357,7 @@ export default function DashboardPage() {
               <div className="space-y-6 pt-4 text-left animate-in fade-in slide-in-from-bottom-4">
                 <header>
                   <h2 className="text-3xl font-black tracking-tighter">Comunidad</h2>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Mensajería y Bumping Live</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Conversaciones y Alertas Live</p>
                 </header>
                 <div className="space-y-4">
                   {alerts?.map((alert) => (
@@ -359,7 +376,7 @@ export default function DashboardPage() {
                       addDocumentNonBlocking(collection(firestore, "alerts"), {
                         type: a.id, label: a.label, latitude: currentCoords.lat, longitude: currentCoords.lng, authorId: user.uid, likes: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
                       });
-                      toast({ title: "Reporte Enviado" });
+                      toast({ title: "Incidencia Reportada" });
                     }}>
                       <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", a.bgColor)}><a.icon className={cn("w-5 h-5", a.color)} /></div>
                       <span className="text-[10px] font-black uppercase">{a.label}</span>
