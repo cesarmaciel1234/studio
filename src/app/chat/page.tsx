@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useRef, useEffect, useMemo } from "react"
@@ -26,7 +25,7 @@ function ChatListItem({ order, isAdmin, onClick, isSelected }: { order: any, isA
 
   const driverRef = useMemoFirebase(() => {
     if (!firestore || !order.driverId) return null
-    return doc(firestore, "users", order.driverId, "driverProfile", order.driverId)
+    return doc(firestore, "driverProfiles", order.driverId)
   }, [firestore, order.driverId])
   const { data: driverData } = useDoc(driverRef)
 
@@ -139,7 +138,7 @@ export default function ChatPage() {
 
   const driverProfileRef = useMemoFirebase(() => {
     if (!firestore || !selectedOrder?.driverId) return null
-    return doc(firestore, "users", selectedOrder.driverId, "driverProfile", selectedOrder.driverId)
+    return doc(firestore, "driverProfiles", selectedOrder.driverId)
   }, [firestore, selectedOrder?.driverId])
   const { data: driverData } = useDoc(driverProfileRef)
 
