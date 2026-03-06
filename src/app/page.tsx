@@ -9,14 +9,11 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import dynamic from "next/dynamic"
-import Link from "next/link"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, addDocumentNonBlocking, useAuth, setDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase"
-import { doc, collection, query, where, orderBy, limit, serverTimestamp } from "firebase/firestore"
+import { doc, collection, query, where, orderBy, limit } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
-import { signOut } from "firebase/auth"
 import { Progress } from "@/components/ui/progress"
 import { driverCopilot } from "@/ai/flows/driver-copilot-flow"
 import type { DriverCopilotInput, DriverCopilotOutput, CopilotMessage } from "@/ai/schemas"
@@ -24,7 +21,6 @@ import { LoginScreen } from "@/components/auth/LoginScreen"
 import { AdminOrderItem } from "@/components/dashboard/AdminOrderItem"
 import { DriverOrderCard } from "@/components/dashboard/DriverOrderCard"
 import { CoroItem } from "@/components/dashboard/CoroItem"
-import { safeFormat } from "@/lib/date-utils"
 import { AppSidebar } from "@/components/layout/AppSidebar"
 
 const InteractiveMap = dynamic(() => import("@/components/InteractiveMap"), {
@@ -59,11 +55,10 @@ export default function DashboardPage() {
   ])
   const [isCopoThinking, setIsCopoThinking] = useState(false)
   const copilotScrollRef = useRef<HTMLDivElement>(null)
-  const [copilotAudioUrl, setCopilotAudioUrl] = useState<string | null>(null);
 
   useEffect(() => { setMounted(true) }, [])
 
-  // Detección de rol unificada
+  // Detección de rol unificada desde la colección maestra 'users'
   const userDocRef = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null
     return doc(firestore, "users", user.uid)
@@ -79,6 +74,7 @@ export default function DashboardPage() {
           setCurrentCoords(coords)
           if (position.coords.heading !== null) setHeading(position.coords.heading)
           
+          // Actualizar ubicación en driverProfiles solo si es repartidor
           if (!isUserLoading && user?.uid && firestore && userData?.role === 'Driver') {
             const dRef = doc(firestore, "driverProfiles", user.uid)
             setDocumentNonBlocking(dRef, {
@@ -146,7 +142,6 @@ export default function DashboardPage() {
         conversationHistory: [...copilotConversation, userMessage],
       });
       setCopilotConversation(prev => [...prev, { role: 'model', content: result.response, imageUrl: result.imageUrl }]);
-      if (result.audioUrl) setCopilotAudioUrl(result.audioUrl);
     } catch (error) {
       setCopilotConversation(prev => [...prev, { role: 'model', content: "Lo siento, tuve un problema de conexión." }]);
     } finally {
@@ -168,7 +163,6 @@ export default function DashboardPage() {
     if (!isDragging) return
     setIsDragging(false)
     
-    // Lógica de 3 niveles: Piso, Medio, Techo
     if (dragY < -60) {
       if (panelState === "piso") setPanelState("medio")
       else if (panelState === "medio") setPanelState("techo")
@@ -186,23 +180,26 @@ export default function DashboardPage() {
     const onMouseUp = () => handleDragEnd()
     const onTouchEnd = () => handleDragEnd()
     if (isDragging) {
-      window.addEventListener('mousemove', onMouseMove); window.addEventListener('touchmove', onTouchMove, { passive: false });
-      window.addEventListener('mouseup', onMouseUp); window.addEventListener('touchend', onTouchEnd);
+      window.addEventListener('mousemove', onMouseMove); 
+      window.addEventListener('touchmove', onTouchMove, { passive: false });
+      window.addEventListener('mouseup', onMouseUp); 
+      window.addEventListener('touchend', onTouchEnd);
     }
     return () => {
-      window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('touchmove', onTouchMove);
-      window.removeEventListener('mouseup', onMouseUp); window.removeEventListener('touchend', onTouchEnd);
+      window.removeEventListener('mousemove', onMouseMove); 
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('mouseup', onMouseUp); 
+      window.removeEventListener('touchend', onTouchEnd);
     }
   }, [isDragging, handleDragMove, handleDragEnd])
 
   const hasActiveSOS = alerts?.some(a => a.type === 'sos');
   
-  // Cálculo de altura de panel
   const getPanelTransform = () => {
     let baseOffset = 0
-    if (panelState === "piso") baseOffset = 88 // Solo manija y pestañas visibles
-    else if (panelState === "medio") baseOffset = 50 // Mitad de pantalla
-    else baseOffset = 0 // Full pantalla
+    if (panelState === "piso") baseOffset = 88 
+    else if (panelState === "medio") baseOffset = 50 
+    else baseOffset = 0 
     
     return `translateY(calc(${baseOffset}vh + ${dragY}px))`
   }
@@ -210,6 +207,7 @@ export default function DashboardPage() {
   if (!mounted) return <div className="fixed inset-0 bg-slate-900" />;
   if (isUserLoading || (user && isUserDataLoading)) return <div className="h-screen w-full flex items-center justify-center bg-slate-900"><Loader2 className="w-8 h-8 animate-spin text-blue-400 opacity-50" /></div>
   
+  // Si no hay usuario o no tiene rol definido, mostrar login
   if (!user || (!isUserDataLoading && !userData?.role)) return <LoginScreen />;
 
   return (
@@ -300,7 +298,7 @@ export default function DashboardPage() {
             {activeTab === 'ruta' && (
               <div className="space-y-6 pt-4 animate-in fade-in slide-in-from-bottom-4">
                 {isAdmin ? (
-                  <div className="space-y-6">
+                  <div className="space-y-6 text-left">
                     <div className="bg-slate-900 rounded-[48px] p-10 text-white shadow-2xl">
                       <h2 className="text-3xl font-black tracking-tighter">Logística Central</h2>
                       <div className="grid grid-cols-2 gap-4 mt-6">
@@ -319,7 +317,7 @@ export default function DashboardPage() {
                     ))}
                   </div>
                 ) : (
-                  <>
+                  <div className="space-y-6 text-left">
                     <div className="bg-slate-900 rounded-[48px] p-10 text-white shadow-2xl">
                       <h2 className="text-3xl font-black tracking-tighter">Mi Jornada</h2>
                       <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mt-2">Objetivo diario: 70% completado</p>
@@ -328,7 +326,7 @@ export default function DashboardPage() {
                     {driverActiveOrders?.map((order, i) => (
                       <DriverOrderCard key={order.id} order={order} index={i} currentCoords={currentCoords} onOpenChat={() => router.push(`/chat?orderId=${order.id}`)} />
                     ))}
-                  </>
+                  </div>
                 )}
               </div>
             )}
