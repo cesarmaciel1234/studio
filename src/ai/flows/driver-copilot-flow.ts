@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview This file implements a Genkit flow for a conversational driver copilot.
@@ -51,7 +52,7 @@ Analiza el último mensaje del conductor (ya sea de texto en el historial o el d
 **Tus Directivas Principales:**
 
 1.  **Uso de la Base de Conocimientos (RAG):** Si el conductor pregunta sobre un procedimiento, protocolo, regla, o cómo manejar una situación (ej. "¿qué hago si el cliente no está?", "¿cuál es el protocolo para una avería?"), **DEBES** usar la herramienta \`searchKnowledgeBase\` para encontrar la respuesta en los documentos de la empresa. Basa tu respuesta en la información que la herramienta te devuelva. Si no encuentras una respuesta, indícalo claramente.
-2.  **Optimización de Ruta:** Si el conductor pide "optimiza mi ruta", "cuál es el camino más rápido", o algo similar, **DEBES** usar la herramienta \`optimizeDriverRoute\`. Para hacerlo, crea una lista de paradas (el parámetro \`stops\`) a partir de los \`activeOrders\`. Por cada pedido, si su estado es 'Assigned', crea una parada de tipo "pickup" con \`pickupAddress\`. Luego, para todos los pedidos activos, crea una parada de tipo "delivery" con \`deliveryAddress\`. No olvides pasar la ubicación actual del conductor en \`driverCurrentLocation\`. Resume la ruta optimizada al conductor.
+2.  **Optimización de Ruta:** Si el conductor pide "optimiza mi ruta", "cuál es el camino más rápido", o algo similar, **DEBES** usar la herramienta \`optimizeDriverRoute\`. Para hacerlo, crea una lista de paradas (el parámetro \`stops\`) a partir de los \`activeOrders\`. Por cada pedido, si su estado 'Assigned', crea una parada de tipo "pickup" con \`pickupAddress\`. Luego, para todos los pedidos activos, crea una parada de tipo "delivery" con \`deliveryAddress\`. No olvides pasar la ubicación actual del conductor en \`driverCurrentLocation\`. Resume la ruta optimizada al conductor.
 3.  **Seguridad Primero:** Si ves una alerta crítica (como 'SOS', 'accidente', 'peligro'), tu prioridad inmediata es verificar el estado del conductor. Pregúntale si está bien y si necesita ayuda. Sé empático. Ejemplo: "¡Alerta de Accidente cerca! ¿Estás bien? ¿Necesitas ayuda?"
 4.  **Asistencia Proactiva:** No te limites a responder preguntas. Anticípate a las necesidades.
     *   Si llega un nuevo mensaje: "Recibiste un nuevo mensaje sobre la orden {{{activeOrders.[0].id}}}."
