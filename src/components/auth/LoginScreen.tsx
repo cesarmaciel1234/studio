@@ -34,7 +34,7 @@ export function LoginScreen() {
         if(userCredential?.user) {
           const userId = userCredential.user.uid
           
-          // 1. Crear documento maestro de usuario (Fuente de Verdad)
+          // 1. Crear documento maestro de usuario (Fuente de Verdad Única)
           setDocumentNonBlocking(doc(firestore, "users", userId), {
             id: userId,
             firstName: onboardingName,
