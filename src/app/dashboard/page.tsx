@@ -294,8 +294,19 @@ export default function DashboardPage() {
     }
   }, [activeOrder, isNavigating])
 
+  const hasActiveSOS = useMemo(() => alerts?.some(a => a.type === 'sos') || false, [alerts])
+
   /**
-   * Publica una alerta en tiempo real en la zona actual del conductor.
+   * FLUJO: CORO DRIVER - Publicación de Alertas Comunitarias
+   * 
+   * 1. ACTIVACIÓN: El usuario selecciona la pestaña de escudo (ShieldAlert) en el panel.
+   * 2. TIPO DE ALERTA: Se presentan botones (DialogTrigger) para Tráfico, Control, Peligro, etc.
+   * 3. ESTADO: Al hacer click, se guarda el tipo seleccionado en 'selectedAlertType'.
+   * 4. DIÁLOGO: Se abre un Dialog donde el usuario ingresa la descripción en un Textarea.
+   * 5. PUBLICACIÓN: El botón 'PUBLICAR' dispara 'handlePublishAlert'.
+   * 6. DATOS: Se recolectan coordenadas GPS, ID de autor, descripción y etiqueta.
+   * 7. FIRESTORE: Se crea un nuevo documento en la colección 'alerts'.
+   * 8. CIERRE/NOTIFICACIÓN: Se limpia el estado, se cierra el diálogo y se muestra un Toast.
    */
   const handlePublishAlert = () => {
     if (!selectedAlertType || !user?.uid || !firestore) return
@@ -348,7 +359,6 @@ export default function DashboardPage() {
   if (isUserLoading || (user && isUserDataLoading)) return <div className="h-screen w-full flex items-center justify-center bg-slate-900 text-white"><Loader2 className="animate-spin" /></div>
   if (!user) return <LoginScreen />
 
-  const hasActiveSOS = useMemo(() => alerts?.some(a => a.type === 'sos') || false, [alerts])
   const sheetY = isMapFullscreen ? 'calc(100% - 40px)' : (isExpanded ? '0' : 'calc(100% - 160px)')
 
   return (
