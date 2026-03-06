@@ -30,7 +30,8 @@ import {
   Boxes,
   Bot,
   Compass,
-  Zap
+  Zap,
+  MoreHorizontal
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -45,7 +46,8 @@ import {
   DialogHeader, 
   DialogTitle, 
   DialogTrigger,
-  DialogFooter
+  DialogFooter,
+  DialogDescription
 } from "@/components/ui/dialog"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import Link from "next/link"
@@ -95,12 +97,17 @@ const CoroItem = ({ alert, userId, onOpenChat }: { alert: any, userId: string, o
           <Icon className={cn("w-6 h-6", colorClass)} />
         </div>
         <div className="flex-1 text-left">
-          <div className="flex wrap items-center gap-2 mb-1">
-             <h4 className={cn("font-black text-xs uppercase tracking-tight", colorClass)}>{alert.label}</h4>
-             <span className="text-slate-200">•</span>
-             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-               {alert.createdAt ? format(new Date(alert.createdAt), 'dd/MM/yy HH:mm') : 'AHORA'}
-             </p>
+          <div className="flex items-center justify-between mb-1">
+             <div className="flex items-center gap-2">
+               <h4 className={cn("font-black text-xs uppercase tracking-tight", colorClass)}>{alert.label}</h4>
+               <span className="text-slate-200">•</span>
+               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                 {alert.createdAt ? format(new Date(alert.createdAt), 'HH:mm') : 'AHORA'}
+               </p>
+             </div>
+             <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300">
+               <MoreHorizontal className="w-4 h-4" />
+             </Button>
           </div>
           <p className="text-sm font-medium text-slate-700 leading-relaxed mb-4">
             {alert.description}
@@ -127,7 +134,7 @@ const PendingOrderCard = ({ order, onAccept }: { order: any, onAccept: (id: stri
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center">
-            <div className="w-6 h-6 rounded-lg border-2 border-slate-200" />
+             <Package className="w-6 h-6 text-slate-400" />
           </div>
           <div>
             <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">RECOMPENSA</p>
@@ -211,7 +218,7 @@ export default function DashboardPage() {
   const { user, isUserLoading } = useUser()
   const { toast } = useToast()
 
-  // ALL HOOKS MUST BE AT THE TOP (ABSOLUTELY NO EARLY RETURNS BEFORE THIS)
+  // --- HOOKS DE ESTADO (SIEMPRE AL INICIO) ---
   const [activeTab, setActiveTab] = useState('ruta')
   const [isExpanded, setIsExpanded] = useState(false)
   const [isMapFullscreen, setIsMapFullscreen] = useState(false)
@@ -229,7 +236,7 @@ export default function DashboardPage() {
   const [chatMessageText, setChatMessageText] = useState("")
   const chatScrollRef = useRef<HTMLDivElement>(null)
 
-  // Memoización de Consultas (HOOKS)
+  // --- HOOKS DE FIREBASE (MEMOIZACIÓN) ---
   const userRef = useMemoFirebase(() => (!firestore || !user?.uid) ? null : doc(firestore, "users", user.uid), [user?.uid, firestore])
   const alertsQuery = useMemoFirebase(() => !firestore ? null : query(collection(firestore, "alerts"), orderBy("createdAt", "desc")), [firestore])
   const pendingOrdersQuery = useMemoFirebase(() => !firestore ? null : query(collection(firestore, "orders"), where("status", "==", "Pending")), [firestore])
@@ -237,7 +244,7 @@ export default function DashboardPage() {
   const orderChatMessagesQuery = useMemoFirebase(() => (!firestore || !selectedChatOrderId) ? null : query(collection(firestore, `orders/${selectedChatOrderId}/chatMessages`), orderBy("timestamp", "asc")), [selectedChatOrderId, firestore])
   const alertChatMessagesQuery = useMemoFirebase(() => (!firestore || !selectedChatAlertId) ? null : query(collection(firestore, `alerts/${selectedChatAlertId}/messages`), orderBy("timestamp", "asc")), [selectedChatAlertId, firestore])
 
-  // Hooks de Datos
+  // --- HOOKS DE DATOS (FIREBASE) ---
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userRef)
   const { data: alerts } = useCollection(alertsQuery)
   const { data: pendingOrders } = useCollection(pendingOrdersQuery)
@@ -245,11 +252,12 @@ export default function DashboardPage() {
   const { data: orderChatMessages } = useCollection(orderChatMessagesQuery)
   const { data: alertChatMessages } = useCollection(alertChatMessagesQuery)
 
+  // --- HOOKS DE MEMOIZACIÓN DERIVADOS (REPARADOS PARA CUMPLIR REGLAS DE HOOKS) ---
   const hasActiveSOS = useMemo(() => alerts?.some(a => a.type === 'sos') || false, [alerts])
   const activeOrder = useMemo(() => driverActiveOrders?.[0], [driverActiveOrders])
   const sheetY = useMemo(() => isMapFullscreen ? 'calc(100% - 40px)' : (isExpanded ? '0' : 'calc(100% - 160px)'), [isMapFullscreen, isExpanded])
 
-  // Efectos
+  // --- EFECTOS ---
   useEffect(() => {
     setMounted(true)
     if ("geolocation" in navigator) {
@@ -279,7 +287,20 @@ export default function DashboardPage() {
     }
   }, [selectedChatOrderId, selectedChatAlertId, orderChatMessages?.length, alertChatMessages?.length])
 
-  // Manejadores
+  // --- MANEJADORES ---
+  
+  /**
+   * FLUJO DE ACTIVACIÓN DE ALERTA COMUNITARIA:
+   * 1. Activación: En el panel deslizable inferior, hay una pestaña con un ícono de escudo (ShieldAlert). Al hacer clic, la aplicación activa la sección de "Coro Driver".
+   * 2. Botones de Tipo de Alerta: Dentro de esta sección, se presenta una barra horizontal con botones para los diferentes tipos de alerta: "Control", "Tráfico", "Peligro" y "Obras".
+   * 3. Disparador de Diálogo: Cada uno de estos botones es un DialogTrigger que abre una ventana emergente cuando se presiona.
+   * 4. Guardado de Estado: Al hacer clic en un botón, se guarda el tipo de alerta seleccionado en selectedAlertType.
+   * 5. Ingreso de Información: Dentro del diálogo, el usuario ingresa una descripción en el Textarea.
+   * 6. Botón de Publicación: El botón "PUBLICAR" ejecuta handlePublishAlert.
+   * 7. Recopilación de Datos: Se reúne el tipo de alerta, la etiqueta, la descripción, coordenadas GPS actuales y la ID del usuario.
+   * 8. Creación en Firestore: Se añade el documento a la colección 'alerts'.
+   * 9. Cierre y Notificación: Finalmente se cierra el diálogo y se muestra un toast.
+   */
   const handlePublishAlert = useCallback(() => {
     if (!selectedAlertType || !user?.uid || !firestore || !currentCoords) return
     addDocumentNonBlocking(collection(firestore, "alerts"), {
@@ -327,13 +348,14 @@ export default function DashboardPage() {
     toast({ title: "Pedido Asignado Correctamente" })
   }, [user?.uid, firestore, toast])
 
-  // EARLY RETURNS
+  // --- RETORNOS TEMPRANOS (SIEMPRE DESPUÉS DE LOS HOOKS) ---
   if (!mounted) return null
   if (isUserLoading || (user && isUserDataLoading)) return <div className="h-screen w-full flex items-center justify-center bg-slate-900 text-white"><Loader2 className="animate-spin" /></div>
   if (!user) return <LoginScreen />
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-slate-50">
+      {/* MAP LAYER */}
       <div className="absolute inset-0 z-0">
         <InteractiveMap 
           center={currentCoords ? [currentCoords.lat, currentCoords.lng] : [19.4326, -99.1332]} 
@@ -346,7 +368,7 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* HEADER CONTROLS */}
+      {/* FLOATING HEADER CONTROLS */}
       <div className="absolute top-8 left-8 right-8 z-10 flex justify-between pointer-events-none">
         <Sheet>
           <SheetTrigger asChild>
@@ -379,24 +401,24 @@ export default function DashboardPage() {
                   </div>
                   <span className="text-md font-bold text-slate-700">Mi billetera</span>
                 </Link>
-                <Link href="/dashboard" className="flex items-center gap-4 group" onClick={() => setActiveTab('pedidos')}>
+                <button onClick={() => { setActiveTab('pedidos'); setIsExpanded(true); }} className="flex items-center gap-4 group w-full text-left">
                   <div className="h-11 w-11 rounded-[0.8rem] bg-blue-50 flex items-center justify-center shadow-sm">
                     <Package className="h-5 w-5 text-blue-500" />
                   </div>
                   <span className="text-md font-bold text-slate-700">Pedidos</span>
-                </Link>
-                <Link href="/dashboard" className="flex items-center gap-4 group" onClick={() => setActiveTab('alerta')}>
+                </button>
+                <button onClick={() => { setActiveTab('alerta'); setIsExpanded(true); }} className="flex items-center gap-4 group w-full text-left">
                   <div className="h-11 w-11 rounded-[0.8rem] bg-red-50 flex items-center justify-center shadow-sm">
                     <ShieldAlert className="h-5 w-5 text-red-500" />
                   </div>
                   <span className="text-md font-bold text-slate-700">Alerta Comunidad</span>
-                </Link>
-                <Link href="/dashboard" className="flex items-center gap-4 group" onClick={() => setActiveTab('central')}>
+                </button>
+                <button onClick={() => { setActiveTab('central'); setIsExpanded(true); }} className="flex items-center gap-4 group w-full text-left">
                   <div className="h-11 w-11 rounded-[0.8rem] bg-slate-100 flex items-center justify-center shadow-sm">
                     <MessageSquare className="h-5 w-5 text-slate-900" />
                   </div>
                   <span className="text-md font-bold text-slate-700">Central: Mensajería</span>
-                </Link>
+                </button>
               </div>
               <Button variant="ghost" onClick={() => signOut(auth!)} className="w-full justify-start gap-4 h-16 rounded-3xl text-red-500 font-black px-5 hover:bg-red-50 text-sm"><LogOut className="w-5 h-5" /> Salir del sistema</Button>
             </div>
@@ -432,13 +454,14 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* BOTTOM PANEL */}
+      {/* SLIDING BOTTOM PANEL */}
       <div className={cn("absolute inset-x-0 bottom-0 bg-white shadow-[0_-20px_50px_rgba(0,0,0,0.1)] rounded-t-[3.5rem] transition-all duration-500 ease-in-out z-20 overflow-hidden flex flex-col", sheetY === '0' ? "top-20" : sheetY === 'calc(100% - 40px)' ? "top-[calc(100%-40px)]" : "top-1/2")}>
         <div className="h-12 w-full flex items-center justify-center cursor-pointer active:bg-slate-50" onClick={() => setIsExpanded(!isExpanded)}>
           <div className={cn("w-16 h-1.5 rounded-full mb-8", hasActiveSOS ? "bg-red-600 animate-pulse" : "bg-slate-200")}></div>
         </div>
         
         <div className="flex-1 overflow-y-auto px-8 pb-12 scrollbar-hide">
+          {/* TAB NAVIGATION */}
           <div className="flex justify-center mb-10 sticky top-0 bg-white pt-2 pb-4 z-30">
             <div className="bg-slate-50 p-2 rounded-[2.5rem] flex items-center gap-2 shadow-inner border border-slate-100">
               <Button variant="ghost" size="icon" onClick={() => setActiveTab("ruta")} className={cn("h-16 w-16 rounded-[1.8rem]", activeTab === "ruta" ? "bg-slate-900 text-white" : "text-slate-400")}><Truck className="h-7 w-7" /></Button>
@@ -448,6 +471,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
+          {/* TAB CONTENT: RUTA */}
           {activeTab === 'ruta' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-left">
               <div className="bg-slate-900 rounded-[3rem] p-10 text-white shadow-2xl mb-12 relative overflow-hidden">
@@ -525,6 +549,7 @@ export default function DashboardPage() {
             </div>
           )}
 
+          {/* TAB CONTENT: PEDIDOS */}
           {activeTab === 'pedidos' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-left">
               <div className="flex items-center gap-6 mb-10">
@@ -551,13 +576,13 @@ export default function DashboardPage() {
             </div>
           )}
 
+          {/* TAB CONTENT: ALERTA (CORO DRIVER) */}
           {activeTab === 'alerta' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-left">
               <header className="flex items-center justify-between mb-10">
                 <h2 className="text-3xl font-black tracking-tighter uppercase">Coro Driver</h2>
               </header>
               
-              {/* FLUJO DE ALERTA: Selección de tipo y publicación */}
               <div className="flex gap-4 mb-12 overflow-x-auto pb-4 scrollbar-hide">
                 {[
                   { id: "policia", label: "CONTROL", icon: ShieldAlert, bg: "bg-blue-50", color: "text-blue-600" },
@@ -577,12 +602,15 @@ export default function DashboardPage() {
                       </div>
                     </DialogTrigger>
                     <DialogContent className="max-w-md w-[92vw] rounded-[48px] p-10">
-                      <DialogHeader><DialogTitle className="font-black uppercase text-xl text-center">Reportar {a.label}</DialogTitle></DialogHeader>
+                      <DialogHeader>
+                        <DialogTitle className="font-black uppercase text-xl text-center">Reportar {a.label}</DialogTitle>
+                        <DialogDescription className="text-center">Avisa a la comunidad sobre esta situación en tiempo real.</DialogDescription>
+                      </DialogHeader>
                       <div className="py-6">
-                        <Textarea placeholder="Describe la situación..." className="min-h-[120px] bg-slate-50 rounded-[28px] p-6 text-lg" value={alertDescription} onChange={(e) => setAlertDescription(e.target.value)} />
+                        <Textarea placeholder="Describe la situación..." className="min-h-[120px] bg-slate-50 rounded-[28px] p-6 text-lg border-none focus-visible:ring-blue-500" value={alertDescription} onChange={(e) => setAlertDescription(e.target.value)} />
                       </div>
                       <DialogFooter>
-                        <Button onClick={handlePublishAlert} className="w-full h-20 rounded-[32px] bg-slate-900 text-white font-black uppercase">PUBLICAR</Button>
+                        <Button onClick={handlePublishAlert} className="w-full h-20 rounded-[32px] bg-slate-900 text-white font-black uppercase shadow-xl hover:bg-black">PUBLICAR REPORTE</Button>
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
@@ -596,6 +624,7 @@ export default function DashboardPage() {
             </div>
           )}
 
+          {/* TAB CONTENT: CENTRAL (CHAT) */}
           {activeTab === 'central' && (
              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-left h-full flex flex-col min-h-[500px]">
                 {(selectedChatOrderId || selectedChatAlertId) ? (
