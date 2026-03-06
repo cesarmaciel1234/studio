@@ -2,47 +2,16 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- FUNCIONES DE AYUDA ---
+    // --- REGLAS DE SEGURIDAD PARA RUTARÁPIDA PRO ---
+    // En esta fase de prototipo, permitimos acceso completo de lectura y escritura 
+    // a cualquier usuario que haya iniciado sesión (incluyendo login anónimo).
+    // Esto asegura que las consultas de lista (list) en colecciones como /orders 
+    // funcionen correctamente para conductores y administradores.
 
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    // --- REGLAS SIMPLIFICADAS PARA PROTOTIPO ---
-    // Permitimos lectura y escritura a cualquier usuario autenticado en todas las colecciones
-    // para asegurar la fluidez del MVP y evitar errores de permisos durante el desarrollo.
-
-    match /users/{userId} {
-      allow read, write: if isSignedIn();
-    }
-
-    match /driverProfiles/{driverId} {
-      allow read, write: if isSignedIn();
-    }
-
-    match /companyProfiles/{companyId} {
-      allow read, write: if isSignedIn();
-    }
-
-    match /orders/{orderId} {
-      allow read, write: if isSignedIn();
-      
-      match /chatMessages/{messageId} {
-        allow read, write: if isSignedIn();
-      }
-    }
-
-    match /alerts/{alertId} {
-      allow read, write: if isSignedIn();
-    }
-
-    match /vehicles/{vehicleId} {
-      allow read, write: if isSignedIn();
-    }
-    
-    // Regla global de respaldo
     match /{document=**} {
-      allow read, write: if isSignedIn();
+      allow read, write: if request.auth != null;
     }
+
+    // Nota: El despliegue de estas reglas se activa automáticamente al guardar este archivo.
   }
 }

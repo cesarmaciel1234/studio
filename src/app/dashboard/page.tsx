@@ -238,7 +238,7 @@ export default function DashboardPage() {
     }
   }, [])
 
-  // Firebase Data Queries - Solo si el usuario está autenticado
+  // Firebase Data Queries - Solo si el usuario está autenticado y firestore listo
   const userRef = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
     return doc(firestore, "users", user.uid);
@@ -246,13 +246,6 @@ export default function DashboardPage() {
   
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userRef)
   const isAdmin = userData?.role === 'Admin'
-
-  const companyRef = useMemoFirebase(() => {
-    if (!firestore || !user?.uid || !isAdmin) return null;
-    return doc(firestore, "companyProfiles", user.uid);
-  }, [isAdmin, user?.uid, firestore])
-  
-  const { data: companyData } = useDoc(companyRef)
 
   const alertsQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
@@ -429,7 +422,7 @@ export default function DashboardPage() {
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <SheetTitle className="text-2xl font-black tracking-tighter flex items-center gap-2 uppercase">
-                      {isAdmin ? (companyData?.name || "Empresa") : (userData?.firstName || "Conductor")}
+                      {userData?.firstName || "Usuario"}
                     </SheetTitle>
                   </div>
                 </div>
@@ -466,14 +459,12 @@ export default function DashboardPage() {
         </Sheet>
       </div>
 
-      {/* IA Button en el Techo */}
       <div className="absolute right-8 top-8 z-10 flex flex-col gap-4">
         <Button size="icon" onClick={() => setIsAiAssistantOpen(true)} className="h-16 w-16 rounded-[1.5rem] shadow-2xl bg-blue-600 text-white border-none hover:bg-blue-700">
           <Sparkles className="h-8 w-8" />
         </Button>
       </div>
 
-      {/* Navigation Controls en el Piso */}
       <div className="absolute right-8 bottom-32 flex flex-col gap-3 z-10">
         <Button size="icon" variant="secondary" onClick={() => setIsNavigating(!isNavigating)} className={cn("h-12 w-12 rounded-full shadow-xl transition-all", isNavigating ? "bg-blue-600 text-white" : "bg-white text-slate-600")}>
           <Navigation className="h-5 w-5" />
