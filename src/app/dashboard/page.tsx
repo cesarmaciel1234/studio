@@ -324,8 +324,10 @@ export default function DashboardPage() {
 
   const handleSendChatMessage = useCallback(() => {
     if (!chatMessageText.trim() || !user?.uid || !firestore) return
-    if (selectedChatOrderId) {
-      addDocumentNonBlocking(collection(firestore, `orders/${selectedChatOrderId}/chatMessages`), {
+    const activeId = selectedChatOrderId || (activeTab === 'chat' && activeOrder?.id);
+    
+    if (activeId) {
+      addDocumentNonBlocking(collection(firestore, `orders/${activeId}/chatMessages`), {
         authorId: user.uid,
         content: chatMessageText,
         timestamp: new Date().toISOString()
@@ -339,7 +341,7 @@ export default function DashboardPage() {
       })
     }
     setChatMessageText("")
-  }, [chatMessageText, user?.uid, firestore, selectedChatOrderId, selectedChatAlertId, userData?.firstName])
+  }, [chatMessageText, user?.uid, firestore, selectedChatOrderId, selectedChatAlertId, activeTab, activeOrder?.id, userData?.firstName])
 
   const handleAcceptOrder = useCallback((orderId: string) => {
     if (!user?.uid || !firestore) return
@@ -355,7 +357,7 @@ export default function DashboardPage() {
   if (isUserLoading || (user && isUserDataLoading)) return <div className="h-screen w-full flex items-center justify-center bg-slate-900 text-white"><Loader2 className="animate-spin" /></div>
   if (!user) return <LoginScreen />
 
-  // MODO CENTRAL: LAYOUT DE PANTALLA COMPLETA
+  // MODO CENTRAL: LAYOUT DE PANTALLA COMPLETA PARA HISTORIAL
   if (isCentralLayout) {
     return (
       <div className="h-screen w-full bg-white flex flex-col animate-in fade-in duration-500">
@@ -404,7 +406,7 @@ export default function DashboardPage() {
                   <div className="h-14 w-14 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-xl">
                     <MessageSquare className="h-7 w-7" />
                   </div>
-                  <h3 className="text-2xl font-black uppercase tracking-tight">Conversaciones Activas</h3>
+                  <h3 className="text-2xl font-black uppercase tracking-tight">Historial Privado</h3>
                </div>
                {driverActiveOrders?.map(order => (
                   <div key={order.id} className="rounded-[40px] bg-white border border-slate-100 p-8 flex items-center justify-between hover:shadow-2xl hover:scale-[1.02] transition-all cursor-pointer group" onClick={() => { setSelectedChatOrderId(order.id); setSelectedChatAlertId(null); }}>
@@ -510,7 +512,7 @@ export default function DashboardPage() {
         </Sheet>
       </div>
 
-      {/* RESTORED ACTION STACK (CONTROLES FLOTANTES) */}
+      {/* ACTION STACK (CONTROLES FLOTANTES) */}
       <div className="absolute top-8 right-8 z-10 flex flex-col gap-4 pointer-events-auto">
         <Button variant="secondary" size="icon" className="h-20 w-20 rounded-full shadow-2xl bg-[#1e293b] border-none text-slate-400 hover:text-white transition-all">
           <Compass className="h-8 w-8" />
@@ -557,11 +559,14 @@ export default function DashboardPage() {
         </div>
         
         <div className="flex-1 overflow-y-auto px-8 pb-12 scrollbar-hide">
-          {/* TAB NAVIGATION */}
+          {/* TAB NAVIGATION: RESTORED PRIVATE MESSAGING TAB FOR ACTIVE ORDERS */}
           <div className="flex justify-center mb-10 sticky top-0 bg-white pt-2 pb-4 z-30">
             <div className="bg-slate-50 p-2 rounded-[2.5rem] flex items-center gap-2 shadow-inner border border-slate-100">
               <Button variant="ghost" size="icon" onClick={() => setActiveTab("ruta")} className={cn("h-16 w-16 rounded-[1.8rem]", activeTab === "ruta" ? "bg-slate-900 text-white" : "text-slate-400")}><Truck className="h-7 w-7" /></Button>
               <Button variant="ghost" size="icon" onClick={() => setActiveTab("pedidos")} className={cn("h-16 w-16 rounded-[1.8rem]", activeTab === "pedidos" ? "bg-slate-900 text-white" : "text-slate-400")}><Layers className="h-7 w-7" /></Button>
+              {activeOrder && (
+                <Button variant="ghost" size="icon" onClick={() => setActiveTab("chat")} className={cn("h-16 w-16 rounded-[1.8rem]", activeTab === "chat" ? "bg-slate-900 text-white" : "text-slate-400")}><MessageSquare className="h-7 w-7" /></Button>
+              )}
               <Button variant="ghost" size="icon" onClick={() => setActiveTab("alerta")} className={cn("h-16 w-16 rounded-[1.8rem]", activeTab === "alerta" ? "bg-slate-900 text-white" : "text-slate-400")}><ShieldAlert className="h-7 w-7" /></Button>
             </div>
           </div>
@@ -626,7 +631,7 @@ export default function DashboardPage() {
                        <Phone className="w-5 h-5 text-blue-500" />
                        <span className="font-black text-sm text-slate-900 uppercase tracking-widest">LLAMAR</span>
                     </Button>
-                    <Button variant="secondary" className="h-16 rounded-[2rem] bg-slate-50 border-none shadow-sm hover:bg-slate-100 flex items-center justify-center gap-3" onClick={() => { setSelectedChatOrderId(activeOrder.id); setActiveTab('central'); }}>
+                    <Button variant="secondary" className="h-16 rounded-[2rem] bg-slate-50 border-none shadow-sm hover:bg-slate-100 flex items-center justify-center gap-3" onClick={() => setActiveTab('chat')}>
                        <MessageSquare className="w-5 h-5 text-blue-500" />
                        <span className="font-black text-sm text-slate-900 uppercase tracking-widest">CHAT</span>
                     </Button>
@@ -669,6 +674,40 @@ export default function DashboardPage() {
                 )}
               </div>
             </div>
+          )}
+
+          {/* TAB CONTENT: CHAT (PRIVATE MESSAGING FOR ACTIVE ORDER) */}
+          {activeTab === 'chat' && activeOrder && (
+             <div className="h-[500px] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-500 text-left">
+                <header className="flex items-center gap-4 mb-6">
+                  <div className="h-12 w-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg">
+                    <MessageSquare className="h-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-black uppercase tracking-tight">Chat Empresa</h2>
+                    <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Orden #{activeOrder.id.substring(0, 5)}</p>
+                  </div>
+                </header>
+                <div ref={chatScrollRef} className="flex-1 overflow-y-auto space-y-4 p-4 scrollbar-hide bg-slate-50 rounded-[2rem] border border-slate-100 mb-6">
+                  {orderChatMessages?.map((msg) => (
+                    <div key={msg.id} className={cn("flex", msg.authorId === user.uid ? 'justify-end' : 'justify-start')}>
+                      <div className={cn("max-w-[85%] p-4 rounded-[1.5rem] text-sm shadow-sm", msg.authorId === user.uid ? 'bg-slate-900 text-white rounded-tr-none' : 'bg-white text-slate-800 rounded-tl-none border border-slate-100')}>
+                        <p className="font-medium leading-relaxed">{msg.content}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {orderChatMessages?.length === 0 && (
+                    <div className="h-full flex flex-col items-center justify-center opacity-30">
+                       <MessageSquare className="w-12 h-12 mb-2" />
+                       <p className="text-[10px] font-black uppercase tracking-widest">Sin mensajes previos</p>
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-3">
+                  <Input placeholder="Escribe a la empresa..." className="h-14 bg-white border-none rounded-full px-6 font-medium shadow-inner flex-1" value={chatMessageText} onChange={(e) => setChatMessageText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendChatMessage()} />
+                  <Button onClick={handleSendChatMessage} size="icon" className="h-14 w-14 rounded-full bg-blue-600 text-white shadow-xl shrink-0"><Send className="w-5 h-5" /></Button>
+                </div>
+             </div>
           )}
 
           {/* TAB CONTENT: ALERTA (CORO DRIVER) */}
