@@ -74,16 +74,18 @@ export default function DashboardPage() {
           setCurrentCoords(coords)
           
           const dRef = doc(firestore, "driverProfiles", user.uid)
+          // Usamos set con merge para asegurar que el documento exista y se actualice sin errores de permisos
           setDocumentNonBlocking(dRef, {
+            id: user.uid,
             currentLatitude: coords.lat,
             currentLongitude: coords.lng,
             lastLocationUpdate: new Date().toISOString()
           }, { merge: true })
         },
         (error) => {
-          console.warn("GPS Tracking Warning:", error.message);
+          console.warn("GPS Tracking Status:", error.message || "Ubicación no disponible");
         },
-        { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 }
+        { enableHighAccuracy: true, maximumAge: 10000, timeout: 30000 }
       )
       return () => navigator.geolocation.clearWatch(watchId)
     }
@@ -250,9 +252,21 @@ export default function DashboardPage() {
                       <div key={i} className={cn("flex", msg.role === 'user' ? 'justify-end' : 'justify-start')}>
                         <div className={cn("max-w-[85%] p-4 rounded-[22px] text-[13px] shadow-sm", msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-100')}>
                           <p className="font-medium leading-relaxed">{msg.content}</p>
+                          {msg.imageUrl && (
+                            <div className="mt-3 rounded-xl overflow-hidden shadow-inner border border-white/10">
+                              <img src={msg.imageUrl} alt="Copo Celebration" className="w-full h-auto" />
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
+                    {isCopoThinking && (
+                      <div className="flex justify-start">
+                        <div className="bg-slate-700 p-4 rounded-[22px] rounded-tl-none animate-pulse">
+                          <Loader2 className="w-5 h-5 text-slate-400 animate-spin" />
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div className="flex gap-2 pt-4 items-center">
                     <Input placeholder="Pregunta a Copo..." className="h-12 bg-slate-800 border-none text-white rounded-full px-6 text-sm" value={copilotMessage} onChange={(e) => setCopilotMessage(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendTextToCopo()} />
@@ -299,8 +313,17 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     {bizAllOrders?.map(order => (
-                      <AdminOrderItem key={order.id} order={order} onCenterMap={(lat, lng) => setCurrentCoords({lat, lng})} onOpenChat={(id) => router.push(`/chat?orderId=${id}`)} />
+                      <AdminOrderItem key={order.id} order={order} onCenterMap={(lat, lng) => {
+                        setCurrentCoords({lat, lng});
+                        setMapCenterTrigger(p => p+1);
+                      }} onOpenChat={(id) => router.push(`/chat?orderId=${id}`)} />
                     ))}
+                    {bizAllOrders?.length === 0 && (
+                      <div className="text-center py-20 opacity-20">
+                        <Package className="w-16 h-16 mx-auto mb-4" />
+                        <p className="text-[10px] font-black uppercase tracking-widest">Sin rutas activas</p>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-6 text-left">
@@ -312,6 +335,12 @@ export default function DashboardPage() {
                     {driverActiveOrders?.map((order, i) => (
                       <DriverOrderCard key={order.id} order={order} index={i} currentCoords={currentCoords} onOpenChat={() => router.push(`/chat?orderId=${order.id}`)} />
                     ))}
+                    {driverActiveOrders?.length === 0 && (
+                      <div className="text-center py-20 opacity-20">
+                        <Truck className="w-16 h-16 mx-auto mb-4" />
+                        <p className="text-[10px] font-black uppercase tracking-widest">No tienes entregas asignadas</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -331,6 +360,12 @@ export default function DashboardPage() {
                     <Button onClick={() => updateDocumentNonBlocking(doc(firestore!, "orders", order.id), { driverId: user.uid, status: "Assigned", updatedAt: new Date().toISOString() })} className="w-full h-14 rounded-2xl bg-slate-900 text-white font-black uppercase tracking-widest text-xs">ACEPTAR RUTA</Button>
                   </div>
                 ))}
+                {pendingOrders?.length === 0 && (
+                   <div className="text-center py-20 opacity-20">
+                    <Layers className="w-16 h-16 mx-auto mb-4" />
+                    <p className="text-[10px] font-black uppercase tracking-widest">Sin ofertas en tu zona</p>
+                  </div>
+                )}
               </div>
             )}
             {activeTab === 'central' && (
@@ -343,6 +378,12 @@ export default function DashboardPage() {
                   {alerts?.map((alert) => (
                     <CoroItem key={alert.id} alert={alert} userId={user?.uid || ""} />
                   ))}
+                  {alerts?.length === 0 && (
+                    <div className="text-center py-20 opacity-20">
+                      <Users className="w-16 h-16 mx-auto mb-4" />
+                      <p className="text-[10px] font-black uppercase tracking-widest">Todo tranquilo por ahora</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -352,9 +393,19 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-2 gap-4">
                   {[ { id: "policia", label: "Control", icon: ShieldAlert, color: "text-blue-600", bgColor: "bg-blue-50" }, { id: "trafico", label: "Tráfico", icon: Clock, color: "text-orange-600", bgColor: "bg-orange-50" }, { id: "accidente", label: "Accidente", icon: AlertTriangle, color: "text-red-600", bgColor: "bg-red-50" }, { id: "obras", label: "Obras", icon: Navigation, color: "text-emerald-600", bgColor: "bg-emerald-50" } ].map(a => (
                     <Button key={a.id} variant="outline" className="h-24 rounded-[32px] flex flex-col gap-2 bg-white shadow-lg border-none active:scale-95 transition-all" onClick={() => {
-                      if (!currentCoords || !firestore) return;
+                      if (!currentCoords || !firestore) {
+                        toast({ title: "Sin Ubicación", description: "Debes permitir el GPS para reportar alertas.", variant: "destructive" });
+                        return;
+                      }
                       addDocumentNonBlocking(collection(firestore, "alerts"), {
-                        type: a.id, label: a.label, latitude: currentCoords.lat, longitude: currentCoords.lng, authorId: user.uid, likes: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+                        type: a.id, 
+                        label: a.label, 
+                        latitude: currentCoords.lat, 
+                        longitude: currentCoords.lng, 
+                        authorId: user.uid, 
+                        likes: [], 
+                        createdAt: new Date().toISOString(), 
+                        updatedAt: new Date().toISOString()
                       });
                       toast({ title: "Reporte Enviado" });
                     }}>
