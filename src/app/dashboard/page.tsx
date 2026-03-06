@@ -28,7 +28,8 @@ import {
   Users,
   Send,
   Loader2,
-  Phone
+  Phone,
+  LayoutDashboard
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -103,7 +104,8 @@ export default function DashboardPage() {
 
   // Estados
   const [activeTab, setActiveTab] = useState('gestion')
-  const [isExpanded, setIsExpanded] = useState(false)
+  // panelPosition: 'bottom' (piso), 'middle' (medio), 'top' (techo)
+  const [panelPosition, setPanelPosition] = useState<'bottom' | 'middle' | 'top'>('bottom')
   const [mounted, setMounted] = useState(false)
   const [mapCenterTrigger, setMapCenterTrigger] = useState(0)
   const [currentCoords, setCurrentCoords] = useState<{lat: number, lng: number} | null>(null)
@@ -149,6 +151,14 @@ export default function DashboardPage() {
   }, [chatMessages?.length])
 
   // --- 3. ACCIONES ---
+  const togglePanel = () => {
+    setPanelPosition(prev => {
+      if (prev === 'bottom') return 'middle';
+      if (prev === 'middle') return 'top';
+      return 'bottom';
+    });
+  }
+
   const handleCreateOrderWithIA = async () => {
     if (!newOrderDescription.trim() || !user?.uid || !firestore) return
     setIsGeneratingWithAi(true)
@@ -290,8 +300,8 @@ export default function DashboardPage() {
               <Badge className="bg-blue-600 text-white border-none font-black text-[8px] tracking-[0.3em] w-fit">PERFIL LOGÍSTICO</Badge>
             </SheetHeader>
             <div className="flex-1 space-y-4 pt-4">
-              <Button variant="ghost" className="w-full justify-start gap-4 h-14 rounded-2xl text-slate-700 font-bold" onClick={() => { setActiveTab('gestion'); setIsExpanded(true); }}><Package className="w-5 h-5" /> Gestión de Pedidos</Button>
-              <Button variant="ghost" className="w-full justify-start gap-4 h-14 rounded-2xl text-slate-700 font-bold" onClick={() => { setActiveTab('flota'); setIsExpanded(true); }}><Users className="w-5 h-5" /> Mi Flota Activa</Button>
+              <Button variant="ghost" className="w-full justify-start gap-4 h-14 rounded-2xl text-slate-700 font-bold" onClick={() => { setActiveTab('gestion'); setPanelPosition('middle'); }}><Package className="w-5 h-5" /> Gestión de Pedidos</Button>
+              <Button variant="ghost" className="w-full justify-start gap-4 h-14 rounded-2xl text-slate-700 font-bold" onClick={() => { setActiveTab('flota'); setPanelPosition('middle'); }}><Users className="w-5 h-5" /> Mi Flota Activa</Button>
               <Button variant="ghost" className="w-full justify-start gap-4 h-14 rounded-2xl text-slate-700 font-bold" onClick={() => { setActiveTab('central'); }}><MessageSquare className="w-5 h-5" /> Centro de Mensajes</Button>
             </div>
             <Button variant="ghost" onClick={() => signOut(auth!)} className="mt-auto h-16 rounded-3xl text-red-500 font-black hover:bg-red-50"><X className="w-5 h-5 mr-2" /> Cerrar Sesión</Button>
@@ -337,16 +347,21 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* PANEL INFERIOR SLIDING */}
-      <div className={cn("absolute inset-x-0 bottom-0 bg-white shadow-[0_-20px_60px_rgba(0,0,0,0.15)] rounded-t-[5rem] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] z-20 overflow-hidden flex flex-col", isExpanded ? "top-24" : "top-1/2")}>
+      {/* PANEL INFERIOR SLIDING (3 NIVELES: PISO, MEDIO, TECHO) */}
+      <div className={cn(
+        "absolute inset-x-0 bottom-0 bg-white shadow-[0_-20px_60px_rgba(0,0,0,0.15)] rounded-t-[5rem] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] z-20 overflow-hidden flex flex-col", 
+        panelPosition === 'top' ? "top-24" : panelPosition === 'middle' ? "top-1/2" : "top-[calc(100%-130px)]"
+      )}>
         <div className="h-32 w-full flex flex-col items-center justify-center shrink-0 bg-white">
-          <div className="h-10 w-full flex items-center justify-center cursor-pointer active:bg-slate-50" onClick={() => setIsExpanded(!isExpanded)}><div className="w-24 h-2 rounded-full bg-slate-100"></div></div>
+          <div className="h-12 w-full flex items-center justify-center cursor-pointer active:bg-slate-50" onClick={togglePanel}>
+            <div className="w-24 h-2 rounded-full bg-slate-100"></div>
+          </div>
           
           <div className="bg-slate-900 p-2 rounded-full flex items-center gap-2 shadow-2xl scale-90 mb-2">
-            <Button variant="ghost" onClick={() => { setActiveTab("gestion"); setIsExpanded(true); }} className={cn("h-14 flex items-center gap-3 px-10 transition-all duration-300", activeTab === "gestion" ? "bg-white text-slate-900 rounded-full" : "text-slate-400")}>
+            <Button variant="ghost" onClick={() => { setActiveTab("gestion"); setPanelPosition('middle'); }} className={cn("h-14 flex items-center gap-3 px-10 transition-all duration-300", activeTab === "gestion" ? "bg-white text-slate-900 rounded-full" : "text-slate-400")}>
               <Package className="h-5 w-5" />{activeTab === "gestion" && <span className="font-black text-[10px] uppercase tracking-widest">PEDIDOS</span>}
             </Button>
-            <Button variant="ghost" onClick={() => { setActiveTab("flota"); setIsExpanded(true); }} className={cn("h-14 w-14 rounded-full p-0 flex items-center justify-center transition-all duration-300", activeTab === "flota" ? "bg-white text-slate-900" : "text-slate-400")}>
+            <Button variant="ghost" onClick={() => { setActiveTab("flota"); setPanelPosition('middle'); }} className={cn("h-14 w-14 rounded-full p-0 flex items-center justify-center transition-all duration-300", activeTab === "flota" ? "bg-white text-slate-900" : "text-slate-400")}>
               <Users className="h-5 w-5" />
             </Button>
             <Button variant="ghost" onClick={() => { setActiveTab("central"); }} className={cn("h-14 w-14 rounded-full p-0 flex items-center justify-center transition-all duration-300", activeTab === "central" ? "bg-white text-slate-900" : "text-slate-400")}>
