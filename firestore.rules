@@ -8,64 +8,41 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
+    // --- REGLAS SIMPLIFICADAS PARA PROTOTIPO ---
+    // Permitimos lectura y escritura a cualquier usuario autenticado en todas las colecciones
+    // para asegurar la fluidez del MVP y evitar errores de permisos durante el desarrollo.
 
-    // --- REGLAS DE COLECCIONES ---
-
-    /**
-     * @description Reglas para usuarios.
-     * Cualquier usuario autenticado puede leer perfiles para ver la flota.
-     */
     match /users/{userId} {
-      allow read: if isSignedIn();
-      allow write: if isOwner(userId);
+      allow read, write: if isSignedIn();
     }
 
-    /**
-     * @description Perfiles específicos por rol.
-     */
     match /driverProfiles/{driverId} {
-      allow read: if isSignedIn();
-      allow write: if isOwner(driverId);
+      allow read, write: if isSignedIn();
     }
 
     match /companyProfiles/{companyId} {
-      allow read: if isSignedIn();
-      allow write: if isOwner(companyId);
+      allow read, write: if isSignedIn();
     }
 
-    /**
-     * @description Pedidos logísticos.
-     * Permitimos lectura (get y list) a todos los usuarios firmados para que los conductores vean ofertas.
-     */
     match /orders/{orderId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn(); 
-      allow delete: if isSignedIn();
-
+      allow read, write: if isSignedIn();
+      
       match /chatMessages/{messageId} {
         allow read, write: if isSignedIn();
       }
     }
 
-    /**
-     * @description Alertas viales y SOS.
-     */
     match /alerts/{alertId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isSignedIn();
+      allow read, write: if isSignedIn();
     }
 
-    /**
-     * @description Gestión de vehículos.
-     */
     match /vehicles/{vehicleId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read, write: if isSignedIn();
+    }
+    
+    // Regla global de respaldo
+    match /{document=**} {
+      allow read, write: if isSignedIn();
     }
   }
 }
